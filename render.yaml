@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: codetrack-backend
+    env: python
+    region: singapore
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: cd backend && gunicorn app:app --bind 0.0.0.0:$PORT
+    envVars:
+      - key: MONGODB_URI
+        value: mongodb+srv://codetrack:PasSw0rd2023@cluster0.z1ogdtc.mongodb.net/codetrack?retryWrites=true&w=majority
+      - key: SECRET_KEY
+        value: codetrack-super-secret-key-2026
+
+  - type: web
+    name: codetrack-frontend
+    env: static
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: ./frontend/dist
