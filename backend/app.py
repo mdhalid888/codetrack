@@ -148,29 +148,51 @@ def health():
     return jsonify({"status": "ok", "timestamp": datetime.utcnow().isoformat()}), 200
 
 # ----------------------------------------------------
-# ADMIN AUTH API (Supports admin/password123 & test456@gmail.com/admin456@)
+# ADMIN AUTH API (Supports Admin, HODs, Placement Officers)
 # ----------------------------------------------------
+CREDENTIALS_MAP = {
+    # Main Admin
+    "test456@gmail.com": {"password": "admin456@", "role": "super_admin", "dept": "All", "name": "Main Administrator"},
+    "admin": {"password": "admin456@", "role": "super_admin", "dept": "All", "name": "Main Administrator"},
+    
+    # HODs
+    "nitithod@nehrucolleges.com": {"password": "itHod123$", "role": "hod", "dept": "IT", "name": "IT Department HOD"},
+    "nitcsehod@nehrucolleges.com": {"password": "cseHod123$", "role": "hod", "dept": "CSE", "name": "CSE Department HOD"},
+    "nitccehod@nehrucolleges.com": {"password": "cceHod123$", "role": "hod", "dept": "CCE", "name": "CCE Department HOD"},
+    "nitaimlhod@nehrucolleges.com": {"password": "aimlHod123$", "role": "hod", "dept": "AI ML", "name": "AI ML Department HOD"},
+    "nitcshod@nehrucolleges.com": {"password": "csHod123$", "role": "hod", "dept": "CYBER", "name": "Cyber Security HOD"},
+
+    # NIT Placements & Staff
+    "nitplacements@nehrucolleges.com": {"password": "nitplacements23$", "role": "super_admin", "dept": "All", "name": "NIT Placement Officer"},
+    "nitarunpatrick@nehrucolleges.com": {"password": "nitArun123$", "role": "super_admin", "dept": "All", "name": "Arun Patrick (Placement)"},
+    "nitjasonp@nehrucolleges.com": {"password": "nitJason123$", "role": "super_admin", "dept": "All", "name": "Jason P (Placement)"},
+    "nititiv@nehrucolleges.com": {"password": "nitIT123$", "role": "hod", "dept": "IT", "name": "IT Placement Coordinator"},
+    "nicsetiv@nehrucolleges.com": {"password": "nitCSE123$", "role": "hod", "dept": "CSE", "name": "CSE Placement Coordinator"},
+}
+
 @app.route("/api/auth/login", methods=["POST"])
 def admin_login():
     data = request.json or {}
-    username = data.get("username", "").strip()
+    username = data.get("username", "").strip().lower()
     password = data.get("password", "").strip()
 
-    if (username == "test456@gmail.com" and password == "admin456@") or (username == "admin" and password == "admin456@"):
-        return jsonify({
-            "token": f"token-admin-1-test456",
-            "user": {
-                "id": 1,
-                "username": "test456@gmail.com",
-                "role": "super_admin",
-                "department": "All",
-                "name": "Main Administrator"
-            }
-        }), 200
+    # Check fallback credentials dictionary first
+    for u_key, info in CREDENTIALS_MAP.items():
+        if username == u_key.lower() and password == info["password"]:
+            return jsonify({
+                "token": f"token-{u_key}",
+                "user": {
+                    "id": hash(u_key) % 10000,
+                    "username": u_key,
+                    "role": info["role"],
+                    "department": info["dept"],
+                    "name": info["name"]
+                }
+            }), 200
 
     db = get_db()
     try:
-        user = db.query(User).filter(User.username == username).first()
+        user = db.query(User).filter(User.username.ilike(username)).first()
         if not user or user.password != password:
             return jsonify({"error": "Invalid username or password"}), 401
 

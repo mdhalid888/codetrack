@@ -36,18 +36,34 @@ def init_db():
 
     # Check and add individual users if they don't exist
     users_to_add = [
-        ("admin", "password123", "super_admin", None, "Super Administrator"),
-        ("test456@gmail.com", "admin456@", "super_admin", None, "Main Admin"),
-        ("cce_hod", "password123", "hod", "CCE", "Dr. A. Ramesh (CCE HOD)"),
-        ("it_hod", "password123", "hod", "IT", "Dr. S. Priya (IT HOD)"),
-        ("cse_hod", "password123", "hod", "CSE", "Dr. M. Karthik (CSE HOD)"),
-        ("ece_hod", "password123", "hod", "ECE", "Dr. K. Anand (ECE HOD)"),
+        ("test456@gmail.com", "admin456@", "super_admin", "All", "Main Administrator"),
+        ("admin", "admin456@", "super_admin", "All", "Main Administrator"),
+        
+        # HODs
+        ("nitithod@nehrucolleges.com", "itHod123$", "hod", "IT", "IT Department HOD"),
+        ("nitcsehod@nehrucolleges.com", "cseHod123$", "hod", "CSE", "CSE Department HOD"),
+        ("nitccehod@nehrucolleges.com", "cceHod123$", "hod", "CCE", "CCE Department HOD"),
+        ("nitaimlhod@nehrucolleges.com", "aimlHod123$", "hod", "AI ML", "AI ML Department HOD"),
+        ("nitcshod@nehrucolleges.com", "csHod123$", "hod", "CYBER", "Cyber Security HOD"),
+
+        # NIT Placements & Staff
+        ("nitplacements@nehrucolleges.com", "nitplacements23$", "super_admin", "All", "NIT Placement Officer"),
+        ("nitarunpatrick@nehrucolleges.com", "nitArun123$", "super_admin", "All", "Arun Patrick (Placement)"),
+        ("nitjasonp@nehrucolleges.com", "nitJason123$", "super_admin", "All", "Jason P (Placement)"),
+        ("nititiv@nehrucolleges.com", "nitIT123$", "hod", "IT", "IT Placement Coordinator"),
+        ("nicsetiv@nehrucolleges.com", "nitCSE123$", "hod", "CSE", "CSE Placement Coordinator"),
     ]
 
     for u_name, u_pass, u_role, u_dept, u_fullname in users_to_add:
-        if session.query(User).filter(User.username == u_name).count() == 0:
+        existing_user = session.query(User).filter(User.username == u_name).first()
+        if not existing_user:
             user = User(username=u_name, password=u_pass, role=u_role, department=u_dept, name=u_fullname)
             session.add(user)
+        else:
+            existing_user.password = u_pass
+            existing_user.role = u_role
+            existing_user.department = u_dept
+            existing_user.name = u_fullname
     
     session.commit()
 
