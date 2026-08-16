@@ -73,7 +73,15 @@ def init_db():
         "7376222IT001", "7376211IT002", "7376231IT003", "7376231EEE001",
         "7376222ECE001", "7376222CSE001", "7376211CSE002"
     ]
-    session.query(Student).filter(Student.register_number.in_(dummy_reg_numbers)).delete(synchronize_session=False)
+    dummy_names = [
+        "Harini T", "Surya K", "Praveen Raj", "Barath Kumar", "Elango S",
+        "Manoj Kumar", "Arthi R", "Dinesh V", "Gokulraj P", "Kavitha M", "Nivetha B"
+    ]
+    session.query(Student).filter(
+        (Student.register_number.in_(dummy_reg_numbers)) |
+        (Student.name.in_(dummy_names)) |
+        (Student.register_number.like("73762%"))
+    ).delete(synchronize_session=False)
     session.commit()
 
     session.close()
