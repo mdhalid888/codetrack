@@ -13,7 +13,7 @@ from services.all_rounder_service import (
 )
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 # Initialize database
 init_db()
@@ -126,19 +126,46 @@ def resolve_sheet_columns(columns):
     col_map = {}
     for col in columns:
         c_clean = str(col).strip().lower().replace("_", " ").replace("-", " ")
-        if any(k in c_clean for k in ["reg", "roll", "register"]):
+        if "leetcode" in c_clean or "lc username" in c_clean:
+            col_map["leetcode"] = col
+        elif "codechef" in c_clean or "cc username" in c_clean:
+            col_map["codechef"] = col
+        elif "hackerrank" in c_clean or "hr username" in c_clean:
+            col_map["hackerrank"] = col
+        elif "github" in c_clean or "gh username" in c_clean or "git username" in c_clean:
+            col_map["github"] = col
+        elif any(k in c_clean for k in ["reg", "roll", "register"]):
             col_map["reg_no"] = col
         elif any(k in c_clean for k in ["name", "student"]):
-            col_map["name"] = col
-        elif "leetcode" in c_clean or "lc" in c_clean:
-            col_map["leetcode"] = col
-        elif "codechef" in c_clean or "cc" in c_clean:
-            col_map["codechef"] = col
-        elif "hackerrank" in c_clean or "hr" in c_clean:
-            col_map["hackerrank"] = col
-        elif "github" in c_clean or "gh" in c_clean or "git" in c_clean:
-            col_map["github"] = col
+            if not any(p in c_clean for p in ["leetcode", "codechef", "hackerrank", "github", "git", "user"]):
+                col_map["name"] = col
     return col_map
+
+def clean_registration_number(val):
+    if val is None or pd.isna(val):
+        return ""
+    val_str = str(val).strip()
+    if val_str.lower() in ["nan", "none", "nil", "null", ""]:
+        return ""
+    try:
+        if 'e' in val_str.lower() or '.' in val_str:
+            float_val = float(val_str)
+            val_str = str(int(float_val))
+    except Exception:
+        pass
+    if val_str.endswith(".0"):
+        val_str = val_str[:-2]
+    return val_str.upper()
+
+def clean_username(val):
+    if val is None or pd.isna(val):
+        return ""
+    u_str = str(val).strip()
+    if u_str.lower() in ["nan", "none", "nil", "null", "-", "n/a", ""]:
+        return ""
+    u_str = u_str.replace("Username:", "").replace("username:", "").replace("Username :", "")
+    u_str = u_str.strip().lstrip("@")
+    return u_str
 
 # ----------------------------------------------------
 # HEALTH CHECK
@@ -803,24 +830,32 @@ def import_students():
         
         for _, row in df.iterrows():
             name_val = str(row.get(col_map.get("name"), "")).strip() if "name" in col_map else ""
-            reg_val = str(row.get(col_map.get("reg_no"), "")).strip() if "reg_no" in col_map else ""
+            raw_reg = row.get(col_map.get("reg_no"), "") if "reg_no" in col_map else ""
+            reg_val = clean_registration_number(raw_reg)
 
-            if not name_val or not reg_val or name_val == "nan" or reg_val == "nan":
+            if not name_val or name_val.lower() in ["nan", "none", ""] or not reg_val:
                 continue
 
             # Automatic Department and Academic Year parsing
             dept, yr = parse_registration_number(reg_val)
+            if dept == "Unknown":
+                if "it" in filename: dept = "IT"
+                elif "cce" in filename: dept = "CCE"
+                elif "cse" in filename: dept = "CSE"
+                elif "aiml" in filename or "ai" in filename: dept = "AI ML"
+                elif "cyber" in filename or "cs" in filename: dept = "CYBER"
+            if yr == 0:
+                if "4yr" in filename or "4th" in filename: yr = 4
+                elif "3yr" in filename or "3rd" in filename: yr = 3
+                elif "2yr" in filename or "2nd" in filename: yr = 2
+                elif "1yr" in filename or "1st" in filename: yr = 1
+                else: yr = 4
 
-            # Platform usernames (extracted regardless of column position)
-            lc_un = str(row.get(col_map.get("leetcode"), "")).strip() if "leetcode" in col_map else ""
-            cc_un = str(row.get(col_map.get("codechef"), "")).strip() if "codechef" in col_map else ""
-            hr_un = str(row.get(col_map.get("hackerrank"), "")).strip() if "hackerrank" in col_map else ""
-            gh_un = str(row.get(col_map.get("github"), "")).strip() if "github" in col_map else ""
-
-            if lc_un == "nan": lc_un = ""
-            if cc_un == "nan": cc_un = ""
-            if hr_un == "nan": hr_un = ""
-            if gh_un == "nan": gh_un = ""
+            # Clean platform usernames
+            lc_un = clean_username(row.get(col_map.get("leetcode"), "")) if "leetcode" in col_map else ""
+            cc_un = clean_username(row.get(col_map.get("codechef"), "")) if "codechef" in col_map else ""
+            hr_un = clean_username(row.get(col_map.get("hackerrank"), "")) if "hackerrank" in col_map else ""
+            gh_un = clean_username(row.get(col_map.get("github"), "")) if "github" in col_map else ""
             
             # Existing student check
             existing = db.query(Student).filter(Student.register_number == reg_val).first()

@@ -13,9 +13,11 @@ DEPT_MAP = {
 }
 
 YEAR_MAP = {
+    "22": 4,
     "23": 4,
     "24": 3,
-    "25": 2
+    "25": 2,
+    "26": 1
 }
 
 def parse_registration_number(reg_no):
