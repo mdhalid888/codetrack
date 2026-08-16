@@ -1,16 +1,21 @@
 import os
 import io
+import threading
 import pandas as pd
 from datetime import datetime, timedelta
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from sqlalchemy import func
-from database import init_db, SessionLocal
+from database import init_db, SessionLocal, get_mongo_db
 from models import Student, PlatformStats, Attendance, User, parse_registration_number
 from services.all_rounder_service import (
     calculate_platform_normalized_score,
     calculate_overall_allrounder_score
 )
+from services.leetcode_service import fetch_leetcode_stats
+from services.codechef_service import fetch_codechef_stats
+from services.hackerrank_service import fetch_hackerrank_stats
+from services.github_service import fetch_github_stats
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
@@ -166,6 +171,117 @@ def clean_username(val):
     u_str = u_str.replace("Username:", "").replace("username:", "").replace("Username :", "")
     u_str = u_str.strip().lstrip("@")
     return u_str
+
+def sync_all_students_live_data():
+    db = SessionLocal()
+    try:
+        students = db.query(Student).all()
+        today = datetime.utcnow().strftime("%Y-%m-%d")
+        
+        for student in students:
+            # 1. LeetCode
+            if student.leetcode_username:
+                lc_res = fetch_leetcode_stats(student.leetcode_username)
+                lc_score = calculate_platform_normalized_score("leetcode", lc_res)
+                p_lc = db.query(PlatformStats).filter(
+                    PlatformStats.student_id == student.id,
+                    PlatformStats.platform == "leetcode"
+                ).first()
+                if not p_lc:
+                    p_lc = PlatformStats(student_id=student.id, platform="leetcode")
+                    db.add(p_lc)
+                p_lc.problems_solved = lc_res.get("problems_solved", 0)
+                p_lc.easy_solved = lc_res.get("easy_solved", 0)
+                p_lc.medium_solved = lc_res.get("medium_solved", 0)
+                p_lc.hard_solved = lc_res.get("hard_solved", 0)
+                p_lc.rating = lc_res.get("rating", 0)
+                p_lc.global_rank = str(lc_res.get("global_rank", "N/A"))
+                p_lc.active_days = lc_res.get("active_days", 0)
+                p_lc.contests_count = lc_res.get("contests_count", 0)
+                p_lc.normalized_score = lc_score
+                p_lc.status = lc_res.get("status", "connected")
+                p_lc.last_updated = datetime.utcnow()
+
+            # 2. CodeChef
+            if student.codechef_username:
+                cc_res = fetch_codechef_stats(student.codechef_username)
+                cc_score = calculate_platform_normalized_score("codechef", cc_res)
+                p_cc = db.query(PlatformStats).filter(
+                    PlatformStats.student_id == student.id,
+                    PlatformStats.platform == "codechef"
+                ).first()
+                if not p_cc:
+                    p_cc = PlatformStats(student_id=student.id, platform="codechef")
+                    db.add(p_cc)
+                p_cc.problems_solved = cc_res.get("problems_solved", 0)
+                p_cc.rating = cc_res.get("rating", 0)
+                p_cc.highest_rating = cc_res.get("highest_rating", 0)
+                p_cc.stars = cc_res.get("stars", "1★")
+                p_cc.contests_count = cc_res.get("contests_count", 0)
+                p_cc.normalized_score = cc_score
+                p_cc.status = cc_res.get("status", "connected")
+                p_cc.last_updated = datetime.utcnow()
+
+            # 3. HackerRank
+            if student.hackerrank_username:
+                hr_res = fetch_hackerrank_stats(student.hackerrank_username)
+                hr_score = calculate_platform_normalized_score("hackerrank", hr_res)
+                p_hr = db.query(PlatformStats).filter(
+                    PlatformStats.student_id == student.id,
+                    PlatformStats.platform == "hackerrank"
+                ).first()
+                if not p_hr:
+                    p_hr = PlatformStats(student_id=student.id, platform="hackerrank")
+                    db.add(p_hr)
+                p_hr.problems_solved = hr_res.get("problems_solved", 0)
+                p_hr.badges_count = hr_res.get("badges_count", 0)
+                p_hr.skills = hr_res.get("skills", "N/A")
+                p_hr.certifications_count = hr_res.get("certifications_count", 0)
+                p_hr.score = hr_res.get("score", 0)
+                p_hr.normalized_score = hr_score
+                p_hr.status = hr_res.get("status", "connected")
+                p_hr.last_updated = datetime.utcnow()
+
+            # 4. GitHub
+            if student.github_username:
+                gh_res = fetch_github_stats(student.github_username)
+                gh_score = calculate_platform_normalized_score("github", gh_res)
+                p_gh = db.query(PlatformStats).filter(
+                    PlatformStats.student_id == student.id,
+                    PlatformStats.platform == "github"
+                ).first()
+                if not p_gh:
+                    p_gh = PlatformStats(student_id=student.id, platform="github")
+                    db.add(p_gh)
+                p_gh.public_repos = gh_res.get("public_repos", 0)
+                p_gh.contributions = gh_res.get("contributions", 0)
+                p_gh.commits = gh_res.get("commits", 0)
+                p_gh.pull_requests = gh_res.get("pull_requests", 0)
+                p_gh.issues = gh_res.get("issues", 0)
+                p_gh.stars_received = gh_res.get("stars_received", 0)
+                p_gh.followers = gh_res.get("followers", 0)
+                p_gh.normalized_score = gh_score
+                p_gh.status = gh_res.get("status", "connected")
+                p_gh.last_updated = datetime.utcnow()
+
+            db.commit()
+
+        # Sync to MongoDB Atlas
+        mongo_db = get_mongo_db()
+        if mongo_db is not None:
+            mongo_db.students.delete_many({})
+            all_s = db.query(Student).all()
+            recs = []
+            for st in all_s:
+                d = st.to_dict()
+                d["_id"] = st.id
+                recs.append(d)
+            if recs:
+                mongo_db.students.insert_many(recs)
+    except Exception as e:
+        print(f"Background live sync error: {e}")
+    finally:
+        db.close()
 
 # ----------------------------------------------------
 # HEALTH CHECK
@@ -888,9 +1004,18 @@ def import_students():
                 
         db.commit()
         db.close()
-        return jsonify({"message": f"Successfully processed roster file! Added: {added_count}, Updated: {updated_count} students with smart column & department auto-parsing."}), 200
+        
+        # Automatically trigger background live platform scraping for all imported students
+        threading.Thread(target=sync_all_students_live_data).start()
+        
+        return jsonify({"message": f"Successfully processed roster file! Added: {added_count}, Updated: {updated_count} students with live multi-platform data syncing in progress."}), 200
     except Exception as e:
         return jsonify({"error": f"Failed to parse file: {str(e)}"}), 500
+
+@app.route("/api/admin/sync", methods=["POST"])
+def trigger_sync():
+    threading.Thread(target=sync_all_students_live_data).start()
+    return jsonify({"message": "Live platform data synchronization started in background!"}), 200
 
 @app.route("/api/admin/students/<int:student_id>", methods=["PUT"])
 def update_student(student_id):
