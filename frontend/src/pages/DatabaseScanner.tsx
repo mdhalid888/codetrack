@@ -35,9 +35,11 @@ export const DatabaseScanner: React.FC<DatabaseScannerProps> = ({ onRosterUpdate
   const [importMode, setImportMode] = useState<'merge' | 'overwrite'>('merge');
   const [uploading, setUploading] = useState<boolean>(false);
 
-  // Edit Modal state
+  // Edit Modal & Dropdown state
   const [editingStudent, setEditingStudent] = useState<any | null>(null);
   const [editLoading, setEditLoading] = useState<boolean>(false);
+  const [displayLimit, setDisplayLimit] = useState<number>(10);
+  const [quickSelectId, setQuickSelectId] = useState<string>('');
 
   // Daily Task state (with Platform Option)
   const [taskPlatform, setTaskPlatform] = useState<PlatformType>('leetcode');
@@ -493,14 +495,43 @@ export const DatabaseScanner: React.FC<DatabaseScannerProps> = ({ onRosterUpdate
           </div>
         </div>
 
-        {/* Filter Row for Roster */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {/* Quick Select Student Dropdown Bar */}
+        <div className="bg-slate-100 dark:bg-slate-950/80 border border-slate-300 dark:border-slate-800 rounded-xl p-3.5 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Edit3 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+            <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wide">
+              Quick Select Student to Edit Usernames:
+            </span>
+          </div>
+          <select
+            value={quickSelectId}
+            onChange={(e) => {
+              const val = e.target.value;
+              setQuickSelectId(val);
+              if (val) {
+                const s = records.find(r => r.id === Number(val));
+                if (s) setEditingStudent(s);
+              }
+            }}
+            className="w-full sm:w-80 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-indigo-700 dark:text-indigo-300 font-mono font-bold focus:outline-none focus:border-indigo-500 shadow-sm"
+          >
+            <option value="">-- Choose Student from Dropdown to Edit --</option>
+            {records.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.register_number} - {r.name} ({r.department} - Year {r.year})
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Filter Row for Roster with Display Rows Limit Dropdown */}
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Department</label>
             <select
               value={rosterDept}
               onChange={(e) => setRosterDept(e.target.value)}
-              className="w-full bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-4 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
+              className="w-full bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-4 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 font-bold"
             >
               <option value="All">All Departments</option>
               <option value="CCE">CCE</option>
@@ -516,7 +547,7 @@ export const DatabaseScanner: React.FC<DatabaseScannerProps> = ({ onRosterUpdate
             <select
               value={rosterYear}
               onChange={(e) => setRosterYear(e.target.value)}
-              className="w-full bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-4 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
+              className="w-full bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-4 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 font-bold"
             >
               <option value="All">All Years</option>
               <option value="1">1st Year</option>
@@ -527,15 +558,30 @@ export const DatabaseScanner: React.FC<DatabaseScannerProps> = ({ onRosterUpdate
           </div>
 
           <div>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Display Limit</label>
+            <select
+              value={displayLimit}
+              onChange={(e) => setDisplayLimit(Number(e.target.value))}
+              className="w-full bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-4 py-2 text-xs text-indigo-600 dark:text-indigo-400 font-bold focus:outline-none focus:border-indigo-500"
+            >
+              <option value={10}>Show 10 Rows</option>
+              <option value={25}>Show 25 Rows</option>
+              <option value={50}>Show 50 Rows</option>
+              <option value={100}>Show 100 Rows</option>
+              <option value={999999}>Show All Rows</option>
+            </select>
+          </div>
+
+          <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Search Student</label>
             <div className="relative">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
               <input
                 type="text"
-                placeholder="Search by name, reg no, or username..."
+                placeholder="Search by name, reg no..."
                 value={rosterSearch}
                 onChange={(e) => setRosterSearch(e.target.value)}
-                className="w-full bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500"
+                className="w-full bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500 font-medium"
               />
             </div>
           </div>
@@ -563,7 +609,7 @@ export const DatabaseScanner: React.FC<DatabaseScannerProps> = ({ onRosterUpdate
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200/80 dark:divide-slate-800/60 font-medium">
-                {records.map((r, idx) => (
+                {records.slice(0, displayLimit).map((r, idx) => (
                   <tr key={r.id} className="hover:bg-slate-100/80 dark:hover:bg-slate-800/40 transition">
                     <td className="py-3 px-3 text-center text-slate-500 font-mono">{idx + 1}</td>
                     <td className="py-3 px-3 font-bold text-slate-900 dark:text-white">{r.name}</td>
