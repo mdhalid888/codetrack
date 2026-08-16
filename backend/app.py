@@ -490,9 +490,18 @@ def get_student_detail(student_id):
             scores_map.get("github", 0.0)
         )
 
+        recent_subs = []
+        if student.leetcode_username:
+            try:
+                lc_data = fetch_leetcode_stats(student.leetcode_username)
+                recent_subs = lc_data.get("recent_submissions", [])
+            except Exception:
+                recent_subs = []
+
         s_dict["stats"] = stats_map
         s_dict["scores"] = scores_map
         s_dict["overall_score"] = overall_score
+        s_dict["recent_submissions"] = recent_subs
 
         return jsonify(s_dict), 200
     finally:

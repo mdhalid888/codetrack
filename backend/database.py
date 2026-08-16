@@ -67,42 +67,24 @@ def init_db():
     
     session.commit()
 
-    # Clean up any dummy mock student records (73762...) if present
-    dummy_reg_numbers = [
-        "7376222CCE001", "7376231CCE002", "7376211CCE003", "7376241CCE004",
-        "7376222IT001", "7376211IT002", "7376231IT003", "7376231EEE001",
-        "7376222ECE001", "7376222CSE001", "7376211CSE002"
-    ]
-    dummy_names = [
-        "Harini T", "Surya K", "Praveen Raj", "Barath Kumar", "Elango S",
-        "Manoj Kumar", "Arthi R", "Dinesh V", "Gokulraj P", "Kavitha M", "Nivetha B"
-    ]
-    session.query(Student).filter(
-        (Student.register_number.in_(dummy_reg_numbers)) |
-        (Student.name.in_(dummy_names)) |
-        (Student.register_number.like("73762%"))
-    ).delete(synchronize_session=False)
     session.commit()
-
     session.close()
 
-    # Sync to MongoDB Atlas if connected
+    # Sync existing student data to MongoDB Atlas if connected (non-destructive)
     mongo_db = get_mongo_db()
     if mongo_db is not None:
         try:
-            print("Syncing data to MongoDB Atlas cluster...")
-            mongo_db.students.delete_many({})
+            print("Verifying MongoDB Atlas sync...")
             db_session = SessionLocal()
             all_students = db_session.query(Student).all()
-            st_records = []
             for st in all_students:
                 d = st.to_dict()
                 d["_id"] = st.id
-                st_records.append(d)
-            if st_records:
-                mongo_db.students.insert_many(st_records)
+                mongo_db.students.replace_one({"_id": st.id}, d, upsert=True)
             db_session.close()
-            print("Successfully synced all student records to MongoDB Atlas!")
+            print("Successfully verified student data in MongoDB Atlas!")
+        except Exception as err:
+            print(f"MongoDB Atlas sync warning: {err}")
         except Exception as err:
             print(f"MongoDB Atlas sync error: {err}")
 

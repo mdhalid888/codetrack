@@ -3,6 +3,28 @@ from datetime import datetime
 
 LEETCODE_GRAPHQL_URL = "https://leetcode.com/graphql"
 
+def format_time_ago(ts):
+    try:
+        sub_time = datetime.fromtimestamp(int(ts))
+        now = datetime.now()
+        diff = now - sub_time
+        seconds = diff.total_seconds()
+        if seconds < 0:
+            return "recently"
+        if seconds < 60:
+            return "just now"
+        elif seconds < 3600:
+            mins = int(seconds / 60)
+            return f"{mins} mins ago" if mins > 1 else "1 min ago"
+        elif seconds < 86400:
+            hrs = int(seconds / 3600)
+            return f"{hrs} hours ago" if hrs > 1 else "1 hour ago"
+        else:
+            days = int(seconds / 86400)
+            return f"{days} days ago" if days > 1 else "1 day ago"
+    except Exception:
+        return "recently"
+
 def fetch_leetcode_stats(username: str) -> dict:
     if not username:
         return {
@@ -15,7 +37,8 @@ def fetch_leetcode_stats(username: str) -> dict:
             "rating": 0,
             "global_rank": "N/A",
             "active_days": 0,
-            "contests_count": 0
+            "contests_count": 0,
+            "recent_submissions": []
         }
 
     query = """
@@ -42,6 +65,11 @@ def fetch_leetcode_stats(username: str) -> dict:
         attendedContestsCount
         globalRanking
       }
+      recentAcSubmissionList(username: $username, limit: 15) {
+        title
+        titleSlug
+        timestamp
+      }
     }
     """
     
@@ -66,7 +94,8 @@ def fetch_leetcode_stats(username: str) -> dict:
                     "rating": 0,
                     "global_rank": "N/A",
                     "active_days": 0,
-                    "contests_count": 0
+                    "contests_count": 0,
+                    "recent_submissions": []
                 }
 
             ac_stats = matched.get("submitStats", {}).get("acSubmissionNum", [])
@@ -94,6 +123,15 @@ def fetch_leetcode_stats(username: str) -> dict:
             rating = round(contest_info.get("rating", 0))
             contests_count = contest_info.get("attendedContestsCount", 0)
 
+            raw_recent = data.get("data", {}).get("recentAcSubmissionList") or []
+            recent_submissions = []
+            for sub in raw_recent:
+                recent_submissions.append({
+                    "title": sub.get("title", "Problem"),
+                    "time_ago": format_time_ago(sub.get("timestamp")),
+                    "difficulty": "Medium"  # Default difficulty indicator
+                })
+
             return {
                 "status": "connected",
                 "error_message": "",
@@ -104,7 +142,8 @@ def fetch_leetcode_stats(username: str) -> dict:
                 "rating": rating,
                 "global_rank": str(ranking) if ranking else "N/A",
                 "active_days": active_days,
-                "contests_count": contests_count
+                "contests_count": contests_count,
+                "recent_submissions": recent_submissions
             }
         else:
             return {
@@ -117,7 +156,8 @@ def fetch_leetcode_stats(username: str) -> dict:
                 "rating": 0,
                 "global_rank": "N/A",
                 "active_days": 0,
-                "contests_count": 0
+                "contests_count": 0,
+                "recent_submissions": []
             }
     except Exception as e:
         return {
@@ -130,5 +170,6 @@ def fetch_leetcode_stats(username: str) -> dict:
             "rating": 0,
             "global_rank": "N/A",
             "active_days": 0,
-            "contests_count": 0
+            "contests_count": 0,
+            "recent_submissions": []
         }

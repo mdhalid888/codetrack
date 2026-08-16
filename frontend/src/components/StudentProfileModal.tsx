@@ -368,21 +368,24 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
                 </div>
 
                 <div className="max-h-72 overflow-y-auto space-y-2.5 pr-2">
-                  {sampleSubmissions.map((sub, i) => (
+                  {((data as any)?.recent_submissions && (data as any).recent_submissions.length > 0
+                    ? (data as any).recent_submissions
+                    : sampleSubmissions
+                  ).map((sub: any, i: number) => (
                     <div key={i} className="p-3 bg-[#fcfaff] dark:bg-[#130f29] border border-[#e9dff7] dark:border-[#252044] rounded-xl flex items-center justify-between gap-3 text-xs">
                       <div className="flex items-center gap-2.5">
                         <span className={`px-2 py-0.5 font-extrabold text-[10px] rounded ${
-                          sub.difficulty === 'EASY'
+                          (sub.difficulty || 'MEDIUM').toUpperCase() === 'EASY'
                             ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'
-                            : sub.difficulty === 'MEDIUM'
+                            : (sub.difficulty || 'MEDIUM').toUpperCase() === 'MEDIUM'
                             ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
                             : 'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300'
                         }`}>
-                          {sub.difficulty}
+                          {(sub.difficulty || 'MEDIUM').toUpperCase()}
                         </span>
                         <strong className="text-[#1e1535] dark:text-white font-bold">{sub.title}</strong>
                       </div>
-                      <span className="text-[#8a7f9e] dark:text-purple-300/60 font-mono text-[11px]">{sub.time}</span>
+                      <span className="text-[#8a7f9e] dark:text-purple-300/60 font-mono text-[11px]">{sub.time_ago || sub.time}</span>
                     </div>
                   ))}
                 </div>
