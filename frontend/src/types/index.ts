@@ -83,6 +83,13 @@ export interface LeaderboardItem {
   codechef_score?: number;
   hackerrank_score?: number;
   github_score?: number;
+
+  active_days?: number;
+  global_rank?: string;
+  badges_count?: number;
+  public_repos?: number;
+  stars_received?: number;
+  codechef_rating?: number;
   overall_score?: number;
 
   today_solved?: number;

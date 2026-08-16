@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import type { PlatformType, LeaderboardItem, AdminUser } from '../types';
 import { getLeaderboard } from '../services/api';
 import { StudentProfileModal } from '../components/StudentProfileModal';
-import { Trophy, Filter, Search, ShieldCheck, Flame } from 'lucide-react';
+import { Trophy, Filter, Search, ShieldCheck } from 'lucide-react';
 
 interface LeaderboardProps {
   currentUser?: AdminUser | null;
@@ -172,10 +172,51 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
                   <th className="py-3.5 px-4">STUDENT NAME</th>
                   <th className="py-3.5 px-4">REG NUMBER</th>
                   <th className="py-3.5 px-4 text-center">CLASSROOM</th>
-                  <th className="py-3.5 px-4 text-right">TOTAL SOLVED</th>
-                  <th className="py-3.5 px-4 text-center">DIFFICULTY BREAKDOWN</th>
-                  <th className="py-3.5 px-4 text-right">TODAY</th>
-                  <th className="py-3.5 px-4 text-right">STREAK</th>
+
+                  {currentPlatform === 'leetcode' && (
+                    <>
+                      <th className="py-3.5 px-4 text-right">SOLVED (E/M/H)</th>
+                      <th className="py-3.5 px-4 text-center">RATING</th>
+                      <th className="py-3.5 px-4 text-center">ACTIVE DAYS</th>
+                      <th className="py-3.5 px-4 text-right">GLOBAL RANK</th>
+                    </>
+                  )}
+
+                  {currentPlatform === 'codechef' && (
+                    <>
+                      <th className="py-3.5 px-4 text-right">CODECHEF RATING</th>
+                      <th className="py-3.5 px-4 text-center">STARS</th>
+                      <th className="py-3.5 px-4 text-center">HIGHEST RATING</th>
+                      <th className="py-3.5 px-4 text-right">SOLVED</th>
+                    </>
+                  )}
+
+                  {currentPlatform === 'hackerrank' && (
+                    <>
+                      <th className="py-3.5 px-4 text-right">HACKERRANK SCORE</th>
+                      <th className="py-3.5 px-4 text-center">BADGES</th>
+                      <th className="py-3.5 px-4 text-center">VERIFIED SKILLS</th>
+                      <th className="py-3.5 px-4 text-right">CHALLENGES</th>
+                    </>
+                  )}
+
+                  {currentPlatform === 'github' && (
+                    <>
+                      <th className="py-3.5 px-4 text-right">CONTRIBUTIONS</th>
+                      <th className="py-3.5 px-4 text-center">PUBLIC REPOS</th>
+                      <th className="py-3.5 px-4 text-center">COMMITS</th>
+                      <th className="py-3.5 px-4 text-right">STARS RECEIVED</th>
+                    </>
+                  )}
+
+                  {currentPlatform === 'allrounder' && (
+                    <>
+                      <th className="py-3.5 px-4 text-right">ALL-ROUNDER SCORE</th>
+                      <th className="py-3.5 px-4 text-center">LEETCODE</th>
+                      <th className="py-3.5 px-4 text-center">CODECHEF</th>
+                      <th className="py-3.5 px-4 text-right">GITHUB</th>
+                    </>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#f0e8fa] dark:divide-[#252044]">
@@ -219,34 +260,93 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
                       </span>
                     </td>
 
-                    <td className="py-4 px-4 text-right font-black text-cyan-600 dark:text-cyan-400 text-lg">
-                      {item.total_solved}
-                    </td>
+                    {currentPlatform === 'leetcode' && (
+                      <>
+                        <td className="py-4 px-4 text-right font-black text-amber-600 dark:text-amber-400 text-base">
+                          {item.total_solved || 0}
+                          <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 font-mono mt-0.5">
+                            E:{item.easy_solved || 0} M:{item.medium_solved || 0} H:{item.hard_solved || 0}
+                          </div>
+                        </td>
+                        <td className="py-4 px-4 text-center font-bold text-purple-600 dark:text-purple-300">
+                          {item.rating || '-'}
+                        </td>
+                        <td className="py-4 px-4 text-center font-mono font-extrabold text-emerald-600 dark:text-emerald-400">
+                          {item.active_days || 0} days
+                        </td>
+                        <td className="py-4 px-4 text-right font-mono text-xs text-slate-600 dark:text-slate-400">
+                          {item.global_rank || 'N/A'}
+                        </td>
+                      </>
+                    )}
 
-                    <td className="py-4 px-4 text-center">
-                      <div className="flex items-center justify-center gap-1.5 text-xs font-bold">
-                        <span className="bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 px-2 py-0.5 rounded-lg border border-emerald-300 dark:border-emerald-500/30">E: {item.easy_solved}</span>
-                        <span className="bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300 px-2 py-0.5 rounded-lg border border-amber-300 dark:border-amber-500/30">M: {item.medium_solved}</span>
-                        <span className="bg-rose-100 dark:bg-rose-500/20 text-rose-800 dark:text-rose-300 px-2 py-0.5 rounded-lg border border-rose-300 dark:border-rose-500/30">H: {item.hard_solved}</span>
-                      </div>
-                    </td>
+                    {currentPlatform === 'codechef' && (
+                      <>
+                        <td className="py-4 px-4 text-right font-black text-amber-600 dark:text-amber-400 text-base">
+                          {item.rating || 0}
+                        </td>
+                        <td className="py-4 px-4 text-center font-black text-amber-500">
+                          {item.stars || '1★'}
+                        </td>
+                        <td className="py-4 px-4 text-center font-bold text-slate-700 dark:text-slate-300 font-mono">
+                          {item.highest_rating || item.rating || 0}
+                        </td>
+                        <td className="py-4 px-4 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                          {item.total_solved || 0}
+                        </td>
+                      </>
+                    )}
 
-                    <td className="py-4 px-4 text-right">
-                      {(item.today_solved || 0) > 0 ? (
-                        <span className="px-2.5 py-1 text-xs font-black bg-amber-500 text-slate-950 rounded-lg">
-                          +{item.today_solved}
-                        </span>
-                      ) : (
-                        <span className="text-[#8a7f9e] dark:text-purple-300/60 font-mono">0</span>
-                      )}
-                    </td>
+                    {currentPlatform === 'hackerrank' && (
+                      <>
+                        <td className="py-4 px-4 text-right font-black text-emerald-600 dark:text-emerald-400 text-base">
+                          {item.score || item.total_solved || 0}
+                        </td>
+                        <td className="py-4 px-4 text-center font-bold text-purple-600 dark:text-purple-300 font-mono">
+                          {item.badges_count || 0} Badges
+                        </td>
+                        <td className="py-4 px-4 text-center text-xs font-medium text-slate-600 dark:text-slate-300">
+                          {item.skills || 'Problem Solving'}
+                        </td>
+                        <td className="py-4 px-4 text-right font-mono font-bold text-cyan-600 dark:text-cyan-400">
+                          {item.total_solved || 0}
+                        </td>
+                      </>
+                    )}
 
-                    <td className="py-4 px-4 text-right font-bold text-amber-600 dark:text-amber-400">
-                      <div className="flex items-center justify-end gap-1">
-                        <span>{item.streak}</span>
-                        <Flame className="w-4 h-4 fill-amber-500 text-amber-500 inline" />
-                      </div>
-                    </td>
+                    {currentPlatform === 'github' && (
+                      <>
+                        <td className="py-4 px-4 text-right font-black text-purple-600 dark:text-purple-400 text-base">
+                          {item.contributions || 0}
+                        </td>
+                        <td className="py-4 px-4 text-center font-mono font-bold text-slate-700 dark:text-slate-300">
+                          {item.public_repos || 0} repos
+                        </td>
+                        <td className="py-4 px-4 text-center font-mono text-emerald-600 dark:text-emerald-400 font-bold">
+                          {item.commits || 0} commits
+                        </td>
+                        <td className="py-4 px-4 text-right font-mono text-amber-500 font-bold">
+                          ★ {item.stars_received || 0}
+                        </td>
+                      </>
+                    )}
+
+                    {currentPlatform === 'allrounder' && (
+                      <>
+                        <td className="py-4 px-4 text-right font-black text-pink-600 dark:text-pink-400 text-lg">
+                          {(item.overall_score || 0).toFixed(1)} / 100
+                        </td>
+                        <td className="py-4 px-4 text-center font-bold text-amber-600 dark:text-amber-400 font-mono">
+                          {item.total_solved || 0} solves
+                        </td>
+                        <td className="py-4 px-4 text-center font-bold text-amber-500 font-mono">
+                          {item.codechef_rating || item.rating || 0} rating
+                        </td>
+                        <td className="py-4 px-4 text-right font-bold text-purple-600 dark:text-purple-400 font-mono">
+                          {item.contributions || 0} contribs
+                        </td>
+                      </>
+                    )}
                   </tr>
                 ))}
               </tbody>

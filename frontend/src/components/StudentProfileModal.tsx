@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom';
 import { getStudentDetail } from '../services/api';
+import type { PlatformType } from '../types';
 import { X, ExternalLink, Flame, CheckCircle2, Award, Calendar, ArrowLeft } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from 'recharts';
 import { LeetCodeLogo, CodeChefLogo, HackerRankLogo, GitHubLogo } from './PlatformLogos';
@@ -83,28 +84,51 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
     { title: "Nth Digit", difficulty: "MEDIUM", time: "1 day ago" },
   ];
 
+  const [activePlatform, setActivePlatform] = useState<PlatformType>('leetcode');
+
   const modalContent = (
     <div className="fixed inset-0 z-[999999] bg-[#f4effc] dark:bg-[#0c0a1d] w-screen h-screen overflow-y-auto flex flex-col selection:bg-purple-500 selection:text-white">
       
-      {/* HIGH-CONTRAST FULL-WIDTH TOP NAVIGATION HEADER (FLUSH TO TOP, NO SPACES) */}
-      <header className="sticky top-0 left-0 right-0 z-[1000000] w-full bg-white dark:bg-[#15122b] border-b border-[#e9dff7] dark:border-[#252044] px-6 py-4 flex items-center justify-between shadow-xl shrink-0 opacity-100">
-        <button
-          onClick={onClose}
-          className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-500 hover:to-pink-400 text-white font-extrabold text-xs sm:text-sm rounded-2xl transition shadow-md shadow-purple-500/20 shrink-0"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Back to Dashboard</span>
-        </button>
-
+      {/* HIGH-CONTRAST FULL-WIDTH TOP NAVIGATION HEADER (WITH GLOBAL PLATFORM SELECTOR) */}
+      <header className="sticky top-0 left-0 right-0 z-[1000000] w-full bg-white dark:bg-[#15122b] border-b border-[#e9dff7] dark:border-[#252044] px-6 py-4 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl shrink-0 opacity-100">
         <div className="flex items-center gap-3">
-          <h2 className="text-lg sm:text-xl font-black tracking-tight text-[#1e1535] dark:text-white">
-            Student Performance Analytics
-          </h2>
-          {data && (
-            <span className="hidden sm:inline-block px-3 py-1 text-xs font-black rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
-              {data.department} — {data.year} Year
-            </span>
-          )}
+          <button
+            onClick={onClose}
+            className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-500 hover:to-pink-400 text-white font-extrabold text-xs sm:text-sm rounded-2xl transition shadow-md shadow-purple-500/20 shrink-0"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Back to Dashboard</span>
+          </button>
+          <div className="hidden sm:block">
+            <h2 className="text-base font-black tracking-tight text-[#1e1535] dark:text-white">
+              {data?.name || 'Student Profile'}
+            </h2>
+            {data && (
+              <span className="text-[11px] font-bold text-purple-600 dark:text-purple-300">
+                {data.department} — Year {data.year} ({data.register_number})
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* IN-MODAL GLOBAL PLATFORM SELECTOR */}
+        <div className="flex items-center gap-1.5 overflow-x-auto py-1 px-3 bg-purple-50/80 dark:bg-[#130f29] rounded-2xl border border-purple-200/80 dark:border-purple-900/40">
+          <span className="text-[10px] font-black text-purple-700 dark:text-purple-400 uppercase tracking-wider hidden lg:inline mr-1">
+            Global Platform:
+          </span>
+          {(['leetcode', 'codechef', 'hackerrank', 'github', 'allrounder'] as PlatformType[]).map((p) => (
+            <button
+              key={p}
+              onClick={() => setActivePlatform(p)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-black transition flex items-center gap-1 ${
+                activePlatform === p
+                  ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 shadow-md scale-105'
+                  : 'bg-white dark:bg-[#1f1b3c] text-slate-700 dark:text-purple-200 hover:bg-purple-100 border border-purple-200/60 dark:border-purple-800/40'
+              }`}
+            >
+              {p === 'leetcode' ? 'LeetCode' : p === 'codechef' ? 'CodeChef' : p === 'hackerrank' ? 'HackerRank' : p === 'github' ? 'GitHub' : 'All-Rounder'}
+            </button>
+          ))}
         </div>
 
         <button
