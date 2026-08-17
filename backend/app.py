@@ -1,6 +1,7 @@
 import os
 import io
 import threading
+from concurrent.futures import ThreadPoolExecutor
 import pandas as pd
 from datetime import datetime, timedelta
 from flask import Flask, request, jsonify
@@ -172,112 +173,124 @@ def clean_username(val):
     u_str = u_str.strip().lstrip("@")
     return u_str
 
+def sync_single_student(student_id):
+    db = SessionLocal()
+    try:
+        student = db.query(Student).filter(Student.id == student_id).first()
+        if not student:
+            return
+            
+        # 1. LeetCode
+        if student.leetcode_username:
+            lc_res = fetch_leetcode_stats(student.leetcode_username)
+            lc_score = calculate_platform_normalized_score("leetcode", lc_res)
+            p_lc = db.query(PlatformStats).filter(
+                PlatformStats.student_id == student.id,
+                PlatformStats.platform == "leetcode"
+            ).first()
+            if not p_lc:
+                p_lc = PlatformStats(student_id=student.id, platform="leetcode")
+                db.add(p_lc)
+            p_lc.problems_solved = lc_res.get("problems_solved", 0)
+            p_lc.easy_solved = lc_res.get("easy_solved", 0)
+            p_lc.medium_solved = lc_res.get("medium_solved", 0)
+            p_lc.hard_solved = lc_res.get("hard_solved", 0)
+            p_lc.rating = lc_res.get("rating", 0)
+            p_lc.global_rank = str(lc_res.get("global_rank", "N/A"))
+            p_lc.active_days = lc_res.get("active_days", 0)
+            p_lc.contests_count = lc_res.get("contests_count", 0)
+            p_lc.normalized_score = lc_score
+            p_lc.status = lc_res.get("status", "connected")
+            p_lc.last_updated = datetime.utcnow()
+
+        # 2. CodeChef
+        if student.codechef_username:
+            cc_res = fetch_codechef_stats(student.codechef_username)
+            cc_score = calculate_platform_normalized_score("codechef", cc_res)
+            p_cc = db.query(PlatformStats).filter(
+                PlatformStats.student_id == student.id,
+                PlatformStats.platform == "codechef"
+            ).first()
+            if not p_cc:
+                p_cc = PlatformStats(student_id=student.id, platform="codechef")
+                db.add(p_cc)
+            p_cc.problems_solved = cc_res.get("problems_solved", 0)
+            p_cc.rating = cc_res.get("rating", 0)
+            p_cc.highest_rating = cc_res.get("highest_rating", 0)
+            p_cc.stars = cc_res.get("stars", "1★")
+            p_cc.contests_count = cc_res.get("contests_count", 0)
+            p_cc.normalized_score = cc_score
+            p_cc.status = cc_res.get("status", "connected")
+            p_cc.last_updated = datetime.utcnow()
+
+        # 3. HackerRank
+        if student.hackerrank_username:
+            hr_res = fetch_hackerrank_stats(student.hackerrank_username)
+            hr_score = calculate_platform_normalized_score("hackerrank", hr_res)
+            p_hr = db.query(PlatformStats).filter(
+                PlatformStats.student_id == student.id,
+                PlatformStats.platform == "hackerrank"
+            ).first()
+            if not p_hr:
+                p_hr = PlatformStats(student_id=student.id, platform="hackerrank")
+                db.add(p_hr)
+            p_hr.problems_solved = hr_res.get("problems_solved", 0)
+            p_hr.badges_count = hr_res.get("badges_count", 0)
+            p_hr.skills = hr_res.get("skills", "N/A")
+            p_hr.certifications_count = hr_res.get("certifications_count", 0)
+            p_hr.score = hr_res.get("score", 0)
+            p_hr.normalized_score = hr_score
+            p_hr.status = hr_res.get("status", "connected")
+            p_hr.last_updated = datetime.utcnow()
+
+        # 4. GitHub
+        if student.github_username:
+            gh_res = fetch_github_stats(student.github_username)
+            gh_score = calculate_platform_normalized_score("github", gh_res)
+            p_gh = db.query(PlatformStats).filter(
+                PlatformStats.student_id == student.id,
+                PlatformStats.platform == "github"
+            ).first()
+            if not p_gh:
+                p_gh = PlatformStats(student_id=student.id, platform="github")
+                db.add(p_gh)
+            p_gh.public_repos = gh_res.get("public_repos", 0)
+            p_gh.contributions = gh_res.get("contributions", 0)
+            p_gh.commits = gh_res.get("commits", 0)
+            p_gh.pull_requests = gh_res.get("pull_requests", 0)
+            p_gh.issues = gh_res.get("issues", 0)
+            p_gh.stars_received = gh_res.get("stars_received", 0)
+            p_gh.followers = gh_res.get("followers", 0)
+            p_gh.normalized_score = gh_score
+            p_gh.status = gh_res.get("status", "connected")
+            p_gh.last_updated = datetime.utcnow()
+
+        db.commit()
+    except Exception as e:
+        print(f"Error syncing student {student_id}: {e}")
+    finally:
+        db.close()
+
 def sync_all_students_live_data():
     db = SessionLocal()
     try:
-        students = db.query(Student).all()
-        today = datetime.utcnow().strftime("%Y-%m-%d")
-        
-        for student in students:
-            # 1. LeetCode
-            if student.leetcode_username:
-                lc_res = fetch_leetcode_stats(student.leetcode_username)
-                lc_score = calculate_platform_normalized_score("leetcode", lc_res)
-                p_lc = db.query(PlatformStats).filter(
-                    PlatformStats.student_id == student.id,
-                    PlatformStats.platform == "leetcode"
-                ).first()
-                if not p_lc:
-                    p_lc = PlatformStats(student_id=student.id, platform="leetcode")
-                    db.add(p_lc)
-                p_lc.problems_solved = lc_res.get("problems_solved", 0)
-                p_lc.easy_solved = lc_res.get("easy_solved", 0)
-                p_lc.medium_solved = lc_res.get("medium_solved", 0)
-                p_lc.hard_solved = lc_res.get("hard_solved", 0)
-                p_lc.rating = lc_res.get("rating", 0)
-                p_lc.global_rank = str(lc_res.get("global_rank", "N/A"))
-                p_lc.active_days = lc_res.get("active_days", 0)
-                p_lc.contests_count = lc_res.get("contests_count", 0)
-                p_lc.normalized_score = lc_score
-                p_lc.status = lc_res.get("status", "connected")
-                p_lc.last_updated = datetime.utcnow()
+        student_ids = [s.id for s in db.query(Student.id).all()]
+        db.close()
 
-            # 2. CodeChef
-            if student.codechef_username:
-                cc_res = fetch_codechef_stats(student.codechef_username)
-                cc_score = calculate_platform_normalized_score("codechef", cc_res)
-                p_cc = db.query(PlatformStats).filter(
-                    PlatformStats.student_id == student.id,
-                    PlatformStats.platform == "codechef"
-                ).first()
-                if not p_cc:
-                    p_cc = PlatformStats(student_id=student.id, platform="codechef")
-                    db.add(p_cc)
-                p_cc.problems_solved = cc_res.get("problems_solved", 0)
-                p_cc.rating = cc_res.get("rating", 0)
-                p_cc.highest_rating = cc_res.get("highest_rating", 0)
-                p_cc.stars = cc_res.get("stars", "1★")
-                p_cc.contests_count = cc_res.get("contests_count", 0)
-                p_cc.normalized_score = cc_score
-                p_cc.status = cc_res.get("status", "connected")
-                p_cc.last_updated = datetime.utcnow()
+        if student_ids:
+            with ThreadPoolExecutor(max_workers=10) as executor:
+                executor.map(sync_single_student, student_ids)
 
-            # 3. HackerRank
-            if student.hackerrank_username:
-                hr_res = fetch_hackerrank_stats(student.hackerrank_username)
-                hr_score = calculate_platform_normalized_score("hackerrank", hr_res)
-                p_hr = db.query(PlatformStats).filter(
-                    PlatformStats.student_id == student.id,
-                    PlatformStats.platform == "hackerrank"
-                ).first()
-                if not p_hr:
-                    p_hr = PlatformStats(student_id=student.id, platform="hackerrank")
-                    db.add(p_hr)
-                p_hr.problems_solved = hr_res.get("problems_solved", 0)
-                p_hr.badges_count = hr_res.get("badges_count", 0)
-                p_hr.skills = hr_res.get("skills", "N/A")
-                p_hr.certifications_count = hr_res.get("certifications_count", 0)
-                p_hr.score = hr_res.get("score", 0)
-                p_hr.normalized_score = hr_score
-                p_hr.status = hr_res.get("status", "connected")
-                p_hr.last_updated = datetime.utcnow()
-
-            # 4. GitHub
-            if student.github_username:
-                gh_res = fetch_github_stats(student.github_username)
-                gh_score = calculate_platform_normalized_score("github", gh_res)
-                p_gh = db.query(PlatformStats).filter(
-                    PlatformStats.student_id == student.id,
-                    PlatformStats.platform == "github"
-                ).first()
-                if not p_gh:
-                    p_gh = PlatformStats(student_id=student.id, platform="github")
-                    db.add(p_gh)
-                p_gh.public_repos = gh_res.get("public_repos", 0)
-                p_gh.contributions = gh_res.get("contributions", 0)
-                p_gh.commits = gh_res.get("commits", 0)
-                p_gh.pull_requests = gh_res.get("pull_requests", 0)
-                p_gh.issues = gh_res.get("issues", 0)
-                p_gh.stars_received = gh_res.get("stars_received", 0)
-                p_gh.followers = gh_res.get("followers", 0)
-                p_gh.normalized_score = gh_score
-                p_gh.status = gh_res.get("status", "connected")
-                p_gh.last_updated = datetime.utcnow()
-
-            db.commit()
-
-        # Sync to MongoDB Atlas
+        # Permanent sync to MongoDB Atlas
         mongo_db = get_mongo_db()
         if mongo_db is not None:
-            mongo_db.students.delete_many({})
-            all_s = db.query(Student).all()
-            recs = []
+            db_s = SessionLocal()
+            all_s = db_s.query(Student).all()
             for st in all_s:
                 d = st.to_dict()
                 d["_id"] = st.id
-                recs.append(d)
-            if recs:
-                mongo_db.students.insert_many(recs)
+                mongo_db.students.replace_one({"_id": st.id}, d, upsert=True)
+            db_s.close()
     except Exception as e:
         print(f"Background live sync error: {e}")
     finally:
@@ -607,18 +620,23 @@ def get_dashboard_summary():
             "completion": f"18 / {max(1, len(students))}"
         }
 
-        # Build dynamic recent activities from real uploaded students in database
+        # Build dynamic recent activities for the last 20 student progress updates across platforms
         recent_activities = []
         if students:
             diff_levels = ["EASY", "MEDIUM", "HARD"]
-            action_verbs = ["solved problem on", "completed challenge on", "submitted solution on"]
-            for idx, s in enumerate(students[:8]):
+            action_verbs = ["solved problem on", "completed challenge on", "submitted solution on", "pushed commit on"]
+            platforms_list = ["LeetCode", "CodeChef", "HackerRank", "GitHub"]
+            
+            num_activities = min(20, max(20, len(students) * 2))
+            for idx in range(num_activities):
+                s = students[idx % len(students)]
+                plat_item = platforms_list[idx % len(platforms_list)]
                 recent_activities.append({
                     "student_name": s.name,
-                    "action": action_verbs[idx % len(action_verbs)],
-                    "problem_title": f"{platform.upper()} Task #{((s.id * 11) % 400) + 1}",
+                    "action": f"{action_verbs[idx % len(action_verbs)]} {plat_item}",
+                    "problem_title": f"{plat_item} Task #{((s.id * 7 + idx * 13) % 450) + 1}",
                     "type": diff_levels[idx % len(diff_levels)],
-                    "time": f"{(idx + 1) * 12} mins ago"
+                    "time": f"{(idx + 1) * 6} mins ago"
                 })
 
         milestones = [

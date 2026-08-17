@@ -70,12 +70,67 @@ def init_db():
     session.commit()
     session.close()
 
-    # Sync existing student data to MongoDB Atlas if connected (non-destructive)
+    # Restore students from MongoDB Atlas if local SQLite is empty
     mongo_db = get_mongo_db()
     if mongo_db is not None:
         try:
-            print("Verifying MongoDB Atlas sync...")
             db_session = SessionLocal()
+            local_count = db_session.query(Student).count()
+            mongo_docs = list(mongo_db.students.find({}))
+            if local_count == 0 and mongo_docs:
+                print(f"Restoring {len(mongo_docs)} student records from MongoDB Atlas to local SQLite...")
+                for doc in mongo_docs:
+                    st_id = doc.get("_id") or doc.get("id")
+                    st = Student(
+                        id=st_id,
+                        name=doc.get("name", "Student"),
+                        register_number=doc.get("register_number", f"REG_{st_id}"),
+                        department=doc.get("department", "IT"),
+                        year=doc.get("year", 4),
+                        section=doc.get("section", "A"),
+                        leetcode_username=doc.get("leetcode_username", ""),
+                        codechef_username=doc.get("codechef_username", ""),
+                        hackerrank_username=doc.get("hackerrank_username", ""),
+                        github_username=doc.get("github_username", "")
+                    )
+                    db_session.add(st)
+                    db_session.flush()
+                    
+                    stats_list = doc.get("platform_stats", [])
+                    if stats_list:
+                        for s_item in stats_list:
+                            p_stat = PlatformStats(
+                                student_id=st.id,
+                                platform=s_item.get("platform", "leetcode"),
+                                problems_solved=s_item.get("problems_solved", 0),
+                                easy_solved=s_item.get("easy_solved", 0),
+                                medium_solved=s_item.get("medium_solved", 0),
+                                hard_solved=s_item.get("hard_solved", 0),
+                                rating=s_item.get("rating", 0),
+                                highest_rating=s_item.get("highest_rating", 0),
+                                stars=s_item.get("stars", "1★"),
+                                contests_count=s_item.get("contests_count", 0),
+                                global_rank=str(s_item.get("global_rank", "N/A")),
+                                active_days=s_item.get("active_days", 0),
+                                badges_count=s_item.get("badges_count", 0),
+                                skills=s_item.get("skills", "N/A"),
+                                certifications_count=s_item.get("certifications_count", 0),
+                                score=s_item.get("score", 0),
+                                public_repos=s_item.get("public_repos", 0),
+                                contributions=s_item.get("contributions", 0),
+                                commits=s_item.get("commits", 0),
+                                pull_requests=s_item.get("pull_requests", 0),
+                                issues=s_item.get("issues", 0),
+                                stars_received=s_item.get("stars_received", 0),
+                                followers=s_item.get("followers", 0),
+                                normalized_score=s_item.get("normalized_score", 0.0),
+                                status=s_item.get("status", "connected")
+                            )
+                            db_session.add(p_stat)
+                db_session.commit()
+                print("Successfully restored all student records from MongoDB Atlas!")
+            
+            # Sync existing student data to MongoDB Atlas if connected (non-destructive)
             all_students = db_session.query(Student).all()
             for st in all_students:
                 d = st.to_dict()
@@ -85,8 +140,6 @@ def init_db():
             print("Successfully verified student data in MongoDB Atlas!")
         except Exception as err:
             print(f"MongoDB Atlas sync warning: {err}")
-        except Exception as err:
-            print(f"MongoDB Atlas sync error: {err}")
 
     print("Database initialized and seeded successfully.")
 

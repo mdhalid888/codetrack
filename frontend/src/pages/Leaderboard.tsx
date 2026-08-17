@@ -264,8 +264,16 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
                       <>
                         <td className="py-4 px-4 text-right font-black text-amber-600 dark:text-amber-400 text-base">
                           {item.total_solved || 0}
-                          <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 font-mono mt-0.5">
-                            E:{item.easy_solved || 0} M:{item.medium_solved || 0} H:{item.hard_solved || 0}
+                          <div className="flex items-center justify-end gap-1.5 text-[10px] font-bold mt-1">
+                            <span className="bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 px-1.5 py-0.5 rounded border border-emerald-300 dark:border-emerald-500/30">
+                              E:{item.easy_solved || 0}
+                            </span>
+                            <span className="bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300 px-1.5 py-0.5 rounded border border-amber-300 dark:border-amber-500/30">
+                              M:{item.medium_solved || 0}
+                            </span>
+                            <span className="bg-rose-100 dark:bg-rose-500/20 text-rose-800 dark:text-rose-300 px-1.5 py-0.5 rounded border border-rose-300 dark:border-rose-500/30">
+                              H:{item.hard_solved || 0}
+                            </span>
                           </div>
                         </td>
                         <td className="py-4 px-4 text-center font-bold text-purple-600 dark:text-purple-300">
