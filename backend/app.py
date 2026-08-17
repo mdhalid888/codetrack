@@ -735,6 +735,41 @@ def get_leaderboard():
 
             is_hod_dept = (role == "hod" and user_dept and s.department == user_dept)
 
+            p_lc = p_stats.get("leetcode")
+            p_cc = p_stats.get("codechef")
+            p_hr = p_stats.get("hackerrank")
+            p_gh = p_stats.get("github")
+
+            lc_solved = p_lc.problems_solved if p_lc else 0
+            lc_easy = p_lc.easy_solved if p_lc else 0
+            lc_med = p_lc.medium_solved if p_lc else 0
+            lc_hard = p_lc.hard_solved if p_lc else 0
+            lc_rating = p_lc.rating if p_lc else 0
+            lc_active = p_lc.active_days if p_lc else 0
+            lc_rank = str(p_lc.global_rank or "N/A") if p_lc else "N/A"
+
+            cc_solved = p_cc.problems_solved if p_cc else 0
+            cc_rating = p_cc.rating if p_cc else 0
+            cc_highest = p_cc.highest_rating if p_cc else 0
+            cc_stars = p_cc.stars if p_cc else "1★"
+
+            hr_score = p_hr.score if p_hr else 0
+            hr_solved = p_hr.problems_solved if p_hr else 0
+            hr_badges = p_hr.badges_count if p_hr else 0
+            hr_skills = p_hr.skills if p_hr else "Problem Solving"
+
+            gh_contribs = p_gh.contributions if p_gh else 0
+            gh_repos = p_gh.public_repos if p_gh else 0
+            gh_commits = p_gh.commits if p_gh else 0
+            gh_stars = p_gh.stars_received if p_gh else 0
+
+            overall_score = calculate_overall_allrounder_score(
+                p_lc.normalized_score if p_lc else 0.0,
+                p_cc.normalized_score if p_cc else 0.0,
+                p_hr.normalized_score if p_hr else 0.0,
+                p_gh.normalized_score if p_gh else 0.0
+            )
+
             leaderboard.append({
                 "sort_tuple": (-rank_score, s.name),
                 "id": s.id,
@@ -742,12 +777,39 @@ def get_leaderboard():
                 "register_number": s.register_number,
                 "department": s.department,
                 "year": s.year,
-                "section": s.section,
+                "section": s.section or "A",
                 "username": f"@{username}",
+
+                # Platform Solved & Breakdown
                 "total_solved": total_val,
                 "easy_solved": easy_v,
                 "medium_solved": med_v,
                 "hard_solved": hard_v,
+
+                # LeetCode specific
+                "rating": lc_rating,
+                "active_days": lc_active,
+                "global_rank": lc_rank,
+
+                # CodeChef specific
+                "codechef_rating": cc_rating,
+                "highest_rating": cc_highest,
+                "stars": cc_stars,
+
+                # HackerRank specific
+                "score": hr_score,
+                "badges_count": hr_badges,
+                "skills": hr_skills,
+
+                # GitHub specific
+                "contributions": gh_contribs,
+                "public_repos": gh_repos,
+                "commits": gh_commits,
+                "stars_received": gh_stars,
+
+                # All-Rounder
+                "overall_score": overall_score,
+
                 "today_solved": today_val,
                 "streak": streak_val,
                 "acceptance": acceptance_val,

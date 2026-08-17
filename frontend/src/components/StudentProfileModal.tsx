@@ -14,13 +14,21 @@ interface StudentProfileModalProps {
 export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studentId, onClose }) => {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!studentId) return;
     setLoading(true);
+    setError(null);
     getStudentDetail(studentId)
-      .then(res => setData(res))
-      .catch(err => console.error(err))
+      .then(res => {
+        setData(res);
+        setError(null);
+      })
+      .catch(err => {
+        console.error(err);
+        setError("Failed to fetch full student profile");
+      })
       .finally(() => setLoading(false));
   }, [studentId]);
 
@@ -146,6 +154,23 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
           <div className="p-20 text-center text-slate-500 dark:text-slate-400">
             <div className="animate-spin w-12 h-12 border-4 border-purple-600 border-t-transparent rounded-full mx-auto mb-4" />
             <p className="text-base font-bold">Loading full-screen student profile analytics...</p>
+          </div>
+        ) : error ? (
+          <div className="p-16 text-center text-rose-500 dark:text-rose-400 bg-white dark:bg-[#171430] border border-rose-200 dark:border-rose-900 rounded-3xl space-y-4">
+            <p className="text-lg font-bold">{error}</p>
+            <button
+              onClick={() => {
+                setLoading(true);
+                setError(null);
+                getStudentDetail(studentId)
+                  .then(res => setData(res))
+                  .catch(() => setError("Failed to fetch full student profile"))
+                  .finally(() => setLoading(false));
+              }}
+              className="px-6 py-2.5 bg-purple-600 text-white rounded-xl font-bold text-sm shadow-md"
+            >
+              Retry Loading Profile
+            </button>
           </div>
         ) : data ? (
           <div className="space-y-8">
