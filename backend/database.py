@@ -80,21 +80,28 @@ def init_db():
             if local_count == 0 and mongo_docs:
                 print(f"Restoring {len(mongo_docs)} student records from MongoDB Atlas to local SQLite...")
                 for doc in mongo_docs:
-                    st_id = doc.get("_id") or doc.get("id")
-                    st = Student(
-                        id=st_id,
-                        name=doc.get("name", "Student"),
-                        register_number=doc.get("register_number", f"REG_{st_id}"),
-                        department=doc.get("department", "IT"),
-                        year=doc.get("year", 4),
-                        section=doc.get("section", "A"),
-                        leetcode_username=doc.get("leetcode_username", ""),
-                        codechef_username=doc.get("codechef_username", ""),
-                        hackerrank_username=doc.get("hackerrank_username", ""),
-                        github_username=doc.get("github_username", "")
-                    )
-                    db_session.add(st)
-                    db_session.flush()
+                    raw_id = doc.get("id") if doc.get("id") is not None else doc.get("_id")
+                    try:
+                        st_id = int(raw_id)
+                    except Exception:
+                        continue
+                    
+                    st = db_session.query(Student).filter(Student.id == st_id).first()
+                    if not st:
+                        st = Student(
+                            id=st_id,
+                            name=doc.get("name", "Student"),
+                            register_number=doc.get("register_number", f"REG_{st_id}"),
+                            department=doc.get("department", "IT"),
+                            year=doc.get("year", 4),
+                            section=doc.get("section", "A"),
+                            leetcode_username=doc.get("leetcode_username", ""),
+                            codechef_username=doc.get("codechef_username", ""),
+                            hackerrank_username=doc.get("hackerrank_username", ""),
+                            github_username=doc.get("github_username", "")
+                        )
+                        db_session.add(st)
+                        db_session.flush()
                     
                     stats_list = doc.get("platform_stats", [])
                     if stats_list:
