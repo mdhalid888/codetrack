@@ -521,18 +521,27 @@ def get_student_detail(student_id):
             scores_map.get("github", 0.0)
         )
 
-        # Instant sub-5ms non-blocking cache read
-        recent_subs = RECENT_SUBMISSIONS_CACHE.get(student_id, [])
-        if not recent_subs and student.leetcode_username:
-            # Trigger background async fetch without blocking response
-            def async_fetch_lc():
-                try:
-                    lc_data = fetch_leetcode_stats(student.leetcode_username)
-                    if lc_data.get("recent_submissions"):
-                        RECENT_SUBMISSIONS_CACHE[student_id] = lc_data.get("recent_submissions")
-                except Exception as err:
-                    print(f"Async LC fetch warning: {err}")
-            threading.Thread(target=async_fetch_lc).start()
+        # Live fetch for real student LeetCode metrics & recent submission history
+        if student.leetcode_username:
+            try:
+                lc_res = fetch_leetcode_stats(student.leetcode_username)
+                if lc_res.get("status") == "connected":
+                    stats_map["leetcode"] = {
+                        "platform": "leetcode",
+                        "problems_solved": lc_res.get("problems_solved", 0),
+                        "easy_solved": lc_res.get("easy_solved", 0),
+                        "medium_solved": lc_res.get("medium_solved", 0),
+                        "hard_solved": lc_res.get("hard_solved", 0),
+                        "rating": lc_res.get("rating", 0),
+                        "active_days": lc_res.get("active_days", 0),
+                        "global_rank": str(lc_res.get("global_rank", "N/A")),
+                        "normalized_score": calculate_platform_normalized_score("leetcode", lc_res)
+                    }
+                    if lc_res.get("recent_submissions"):
+                        recent_subs = lc_res.get("recent_submissions")
+                        RECENT_SUBMISSIONS_CACHE[student_id] = recent_subs
+            except Exception as err:
+                print(f"Live LC fetch warning for {student.leetcode_username}: {err}")
 
         s_dict["stats"] = stats_map
         s_dict["scores"] = scores_map
