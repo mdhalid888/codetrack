@@ -46,11 +46,11 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
 
   if (!studentId) return null;
 
-  const lc = data?.stats?.leetcode || {};
-  const totalSolved = lc.problems_solved || (data ? (data.id * 14 + 120) % 450 : 296);
+  const lc = (data && data.stats) ? (data.stats.leetcode || {}) : {};
+  const totalSolved = lc.problems_solved || (data ? (data.id * 14 + 120) % 450 : 0);
   const easySolved = lc.easy_solved || Math.round(totalSolved * 0.35);
   const mediumSolved = lc.medium_solved || Math.round(totalSolved * 0.5);
-  const hardSolved = lc.hard_solved || Math.max(1, totalSolved - easySolved - mediumSolved);
+  const hardSolved = lc.hard_solved || Math.max(0, totalSolved - easySolved - mediumSolved);
   const acceptance = `${(55 + (data?.id ? (data.id * 3.7) % 32 : 12)).toFixed(1)}%`;
   const currentStreak = data?.id ? Math.max(1, (data.id * 5) % 30) : 3;
   const maxStreak = currentStreak + (data?.id ? (data.id * 7) % 15 : 4);

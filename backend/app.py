@@ -24,6 +24,12 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 # Initialize database
 init_db()
 
+# Auto-trigger live background platform scraping on server startup
+try:
+    threading.Thread(target=sync_all_students_live_data).start()
+except Exception as e:
+    print(f"Startup sync warning: {e}")
+
 # In-memory storage for Notices & Custom Tasks (persistent per server session)
 IN_MEMORY_NOTICES = [
     {

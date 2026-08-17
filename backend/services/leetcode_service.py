@@ -77,7 +77,11 @@ def fetch_leetcode_stats(username: str) -> dict:
         response = requests.post(
             LEETCODE_GRAPHQL_URL,
             json={"query": query, "variables": {"username": username}},
-            headers={"Content-Type": "application/json", "User-Agent": "Mozilla/5.0"},
+            headers={
+                "Content-Type": "application/json",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Referer": "https://leetcode.com"
+            },
             timeout=8
         )
         if response.status_code == 200:
