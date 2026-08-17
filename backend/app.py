@@ -599,8 +599,20 @@ def get_dashboard_summary():
             elif platform == "github":
                 solved_val = p.contributions if p else 0
                 username = s.github_username or s.name.lower().replace(" ", "_")
-            else:
-                solved_val = p.problems_solved if p else 0
+            else: # All-Rounder
+                p_lc = p_stats.get("leetcode")
+                p_cc = p_stats.get("codechef")
+                p_hr = p_stats.get("hackerrank")
+                p_gh = p_stats.get("github")
+                solved_val = (
+                    (p_lc.problems_solved if p_lc else 0) +
+                    (p_cc.problems_solved if p_cc else 0) +
+                    (p_hr.problems_solved if p_hr else 0) +
+                    (p_gh.contributions if p_gh else 0)
+                )
+                easy_v = p_lc.easy_solved if p_lc else 0
+                med_v = p_lc.medium_solved if p_lc else 0
+                hard_v = p_lc.hard_solved if p_lc else 0
                 username = s.name.lower().replace(" ", "_")
 
             today_val = max(1, (s.id * 3 + 2) % 15) if solved_val > 0 else 0
@@ -740,6 +752,21 @@ def get_leaderboard():
             elif platform == "github":
                 total_val = p.contributions if p else 0
                 username = s.github_username or s.name.lower()
+            else: # All-Rounder
+                p_lc = p_stats.get("leetcode")
+                p_cc = p_stats.get("codechef")
+                p_hr = p_stats.get("hackerrank")
+                p_gh = p_stats.get("github")
+                total_val = (
+                    (p_lc.problems_solved if p_lc else 0) +
+                    (p_cc.problems_solved if p_cc else 0) +
+                    (p_hr.problems_solved if p_hr else 0) +
+                    (p_gh.contributions if p_gh else 0)
+                )
+                easy_v = p_lc.easy_solved if p_lc else 0
+                med_v = p_lc.medium_solved if p_lc else 0
+                hard_v = p_lc.hard_solved if p_lc else 0
+                username = s.name.lower().replace(" ", "_")
 
             today_val = max(1, (s.id * 3 + 2) % 15) if total_val > 0 else 0
             streak_val = max(3, (s.id * 7 + 5) % 45) if total_val > 0 else 0
