@@ -112,7 +112,7 @@ export async function getDashboardSummary(
     year
   });
 
-  const res = await fetch(`${API_BASE}/dashboard?${params.toString()}`);
+  const res = await fetch(`${API_BASE}/dashboard-summary?${params.toString()}`);
   if (!res.ok) throw new Error('Failed to fetch dashboard summary');
   return res.json();
 }
@@ -135,7 +135,7 @@ export async function getLeaderboard(
     search,
     role,
     userDept,
-    sort
+    sort_by: sort
   });
 
   const res = await fetch(`${API_BASE}/leaderboard?${params.toString()}`);
@@ -157,8 +157,8 @@ export async function getStudentDetail(id: number): Promise<Student> {
 
 export async function getCompareData(student1Id: number, student2Id: number, platform: PlatformType): Promise<any> {
   const params = new URLSearchParams({
-    student1_id: student1Id.toString(),
-    student2_id: student2Id.toString(),
+    student1: student1Id.toString(),
+    student2: student2Id.toString(),
     platform
   });
 

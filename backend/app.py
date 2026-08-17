@@ -504,6 +504,16 @@ def get_student_detail(student_id):
             stats_map[p.platform] = p_dict
             scores_map[p.platform] = p_dict.get("normalized_score", 0.0)
 
+        default_stats = {
+            "leetcode": {"platform": "leetcode", "problems_solved": 0, "easy_solved": 0, "medium_solved": 0, "hard_solved": 0, "rating": 0, "active_days": 0, "global_rank": "N/A", "normalized_score": 0.0},
+            "codechef": {"platform": "codechef", "problems_solved": 0, "rating": 0, "highest_rating": 0, "stars": "1★", "normalized_score": 0.0},
+            "hackerrank": {"platform": "hackerrank", "problems_solved": 0, "score": 0, "badges_count": 0, "skills": "N/A", "normalized_score": 0.0},
+            "github": {"platform": "github", "contributions": 0, "public_repos": 0, "commits": 0, "stars_received": 0, "normalized_score": 0.0}
+        }
+        for plat_name, def_obj in default_stats.items():
+            if plat_name not in stats_map:
+                stats_map[plat_name] = def_obj
+
         overall_score = calculate_overall_allrounder_score(
             scores_map.get("leetcode", 0.0),
             scores_map.get("codechef", 0.0),
