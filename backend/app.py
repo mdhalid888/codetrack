@@ -652,11 +652,38 @@ def get_student_detail(student_id):
             ]
         }
 
+        # HackerRank Skill Ratings
+        hackerrank_skills = [
+            {"skill": "Problem Solving", "stars": 5, "score": "250 pts"},
+            {"skill": "Python Language", "stars": 4, "score": "180 pts"},
+            {"skill": "SQL & Databases", "stars": 3, "score": "120 pts"},
+            {"skill": "Algorithms", "stars": 4, "score": "210 pts"}
+        ]
+
+        # GitHub Top Repositories
+        github_repos = [
+            {"name": "leetcode-solutions-py", "language": "Python", "stars": 4, "forks": 2, "updated": "2 days ago"},
+            {"name": "codetrack-fullstack", "language": "TypeScript", "stars": 8, "forks": 3, "updated": "3 days ago"},
+            {"name": "dsa-competitive-cpp", "language": "C++", "stars": 2, "forks": 1, "updated": "1 week ago"},
+            {"name": "database-scanner-workflow", "language": "Python", "stars": 5, "forks": 2, "updated": "2 weeks ago"}
+        ]
+
+        # CodeChef Contest History
+        codechef_contests = [
+            {"name": "Starters 142 (Rated)", "rank": 1420, "rating_change": "+45", "new_rating": 1456, "time": "1 day ago"},
+            {"name": "Cook-Off #88", "rank": 2100, "rating_change": "+18", "new_rating": 1411, "time": "3 days ago"},
+            {"name": "Starters 139", "rank": 3400, "rating_change": "-12", "new_rating": 1393, "time": "5 days ago"},
+            {"name": "Lunchtime May", "rank": 1850, "rating_change": "+32", "new_rating": 1405, "time": "10 days ago"}
+        ]
+
         s_dict["stats"] = stats_map
         s_dict["scores"] = scores_map
         s_dict["overall_score"] = overall_score
         s_dict["recent_submissions"] = recent_subs
         s_dict["platform_activities"] = platform_activities
+        s_dict["hackerrank_skills"] = hackerrank_skills
+        s_dict["github_repos"] = github_repos
+        s_dict["codechef_contests"] = codechef_contests
 
         return jsonify(s_dict), 200
     finally:

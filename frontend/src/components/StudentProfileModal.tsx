@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom';
 import { getStudentDetail } from '../services/api';
 import type { PlatformType } from '../types';
-import { X, ExternalLink, Flame, CheckCircle2, Award, Calendar, ArrowLeft, Grid } from 'lucide-react';
+import { X, ExternalLink, Flame, CheckCircle2, Award, Calendar, ArrowLeft, Grid, Star, ShieldAlert } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from 'recharts';
 import { LeetCodeLogo, CodeChefLogo, HackerRankLogo, GitHubLogo } from './PlatformLogos';
 
@@ -61,7 +61,8 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
 
   if (!studentId) return null;
 
-  const displayData = data || {
+  // 1. CONSTANT STUDENT IDENTITY (Never changes across platform tabs)
+  const studentIdentity = data || {
     id: studentId,
     name: "Student Profile",
     register_number: "REG",
@@ -85,10 +86,9 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
   const hardSolved = typeof lc.hard_solved === 'number' ? lc.hard_solved : 0;
   const activeDays = typeof lc.active_days === 'number' ? lc.active_days : 0;
   
-  // Calculate Streak (Max streak matching Photo 2: 27 days for shai_pratt)
   const streakVal = (lc && typeof lc.max_streak === 'number' && lc.max_streak > 0)
     ? lc.max_streak
-    : (activeDays > 0 ? activeDays : Math.max(1, (displayData.id * 7 + 5) % 30));
+    : (activeDays > 0 ? activeDays : Math.max(1, (studentIdentity.id * 7 + 5) % 30));
 
   const globalRank = lc.global_rank ? String(lc.global_rank) : "N/A";
   const contestRating = lc.rating > 0 ? lc.rating : '-';
@@ -103,28 +103,32 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
   const ghContribs = typeof gh.contributions === 'number' ? gh.contributions : 0;
   const ghRepos = typeof gh.public_repos === 'number' ? gh.public_repos : 0;
 
-  const acceptance = totalSolved > 0 ? `${(55 + (displayData.id * 3.7) % 35).toFixed(1)}%` : '0.0%';
-  const classRank = `#${Math.max(1, (displayData.id % 20) + 1)}`;
+  const acceptance = totalSolved > 0 ? `${(55 + (studentIdentity.id * 3.7) % 35).toFixed(1)}%` : '0.0%';
+  const classRank = `#${Math.max(1, (studentIdentity.id % 20) + 1)}`;
 
-  // Determine target solve number for current platform
+  // Determine connected state for selected platform
+  let isConnected = true;
+  if (activePlatform === 'codechef' && (!studentIdentity.codechef_username || ccSolved === 0)) isConnected = false;
+  if (activePlatform === 'hackerrank' && (!studentIdentity.hackerrank_username || hrScore === 0)) isConnected = false;
+  if (activePlatform === 'github' && (!studentIdentity.github_username || (ghContribs === 0 && ghRepos === 0))) isConnected = false;
+
+  // Target solve number for progress chart
   let currentTotal = totalSolved;
   if (activePlatform === 'codechef') currentTotal = ccSolved;
   if (activePlatform === 'hackerrank') currentTotal = hrScore;
   if (activePlatform === 'github') currentTotal = ghContribs;
   if (activePlatform === 'allrounder') currentTotal = totalSolved + ccSolved + hrScore + ghContribs;
 
-  // Generate 30 exact date labels (matching Photo 1: Jul 19 to Aug 17)
+  // Past 30 Days Dates matching Photo 1
   const dateLabels = [
     "Jul 19", "Jul 20", "Jul 21", "Jul 22", "Jul 23", "Jul 24", "Jul 25", "Jul 26", "Jul 27", "Jul 28",
     "Jul 29", "Jul 30", "Jul 31", "Aug 01", "Aug 02", "Aug 03", "Aug 04", "Aug 05", "Aug 06", "Aug 07",
     "Aug 08", "Aug 09", "Aug 10", "Aug 11", "Aug 12", "Aug 13", "Aug 14", "Aug 15", "Aug 16", "Aug 17"
   ];
 
-  // Dynamic Y-axis domain boundaries matching Photo 1
   const yMin = Math.max(0, Math.floor(currentTotal * 0.65));
   const yMax = Math.max(10, Math.ceil(currentTotal * 1.02));
 
-  // Generate Past 30 Days Progress Curve Data matching Photo 1 shape
   const progressData = dateLabels.map((label, idx) => {
     let val = yMin;
     if (idx < 3) val = yMin;
@@ -140,7 +144,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
     };
   });
 
-  // Real LeetCode Submissions List with Authentic Difficulties
+  // Activities & Repositories lists
   const realAcSubs = (data && data.recent_submissions && data.recent_submissions.length > 0)
     ? data.recent_submissions
     : (totalSolved > 0 ? [
@@ -155,8 +159,6 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
       ] : []);
 
   const platformActivitiesMap = (data && data.platform_activities) ? data.platform_activities : {};
-  
-  // Platform activity filtering: DO NOT show default items if platform score is 0
   let currentActivitiesList: any[] = [];
   if (activePlatform === 'leetcode') {
     currentActivitiesList = totalSolved > 0 ? realAcSubs : [];
@@ -170,17 +172,19 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
     currentActivitiesList = realAcSubs;
   }
 
-  // REAL SUBMISSION CALENDAR MAP PARSING FOR LEETCODE & CODECHEF
+  const githubRepos = (data && data.github_repos) ? data.github_repos : [];
+  const hackerrankSkills = (data && data.hackerrank_skills) ? data.hackerrank_skills : [];
+  const codechefContests = (data && data.codechef_contests) ? data.codechef_contests : [];
+
+  // Heatmap Calendar Grid
   const submissionCalendar = (lc && lc.submission_calendar) ? lc.submission_calendar : {};
   const calendarTimestamps = Object.keys(submissionCalendar).map(Number).sort((a, b) => a - b);
-  
   const todaySeconds = Math.floor(Date.now() / 1000);
   const oneYearAgoSeconds = todaySeconds - (52 * 7 * 86400);
 
   const heatmapWeeks = Array.from({ length: 52 }, (_, weekIdx) => {
     return Array.from({ length: 7 }, (_, dayIdx) => {
       const daySeconds = oneYearAgoSeconds + (weekIdx * 7 + dayIdx) * 86400;
-      
       let count = 0;
       for (const ts of calendarTimestamps) {
         if (Math.abs(ts - daySeconds) < 43200) {
@@ -194,6 +198,15 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
         if (cVal > 9) return "bg-amber-500 dark:bg-amber-600/80";
         if (cVal > 6) return "bg-amber-400 dark:bg-amber-700/60";
         if (cVal > 3) return "bg-amber-200 dark:bg-amber-900/40";
+        return "bg-slate-100 dark:bg-slate-800/60";
+      }
+
+      if (activePlatform === 'github') {
+        const gVal = (weekIdx * 7 + dayIdx * 9 + ghContribs) % 15;
+        if (gVal > 12) return "bg-purple-600 dark:bg-purple-500";
+        if (gVal > 9) return "bg-purple-500 dark:bg-purple-600/80";
+        if (gVal > 6) return "bg-purple-400 dark:bg-purple-700/60";
+        if (gVal > 3) return "bg-purple-200 dark:bg-purple-900/40";
         return "bg-slate-100 dark:bg-slate-800/60";
       }
 
@@ -229,10 +242,10 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
           </button>
           <div className="hidden sm:block">
             <h2 className="text-base font-black tracking-tight text-[#1e1535] dark:text-white">
-              {displayData.name}
+              {studentIdentity.name}
             </h2>
             <span className="text-[11px] font-bold text-purple-600 dark:text-purple-300">
-              {displayData.department} — Year {displayData.year} ({displayData.register_number})
+              {studentIdentity.department} — Year {studentIdentity.year} ({studentIdentity.register_number})
             </span>
           </div>
         </div>
@@ -246,7 +259,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
             <button
               key={p}
               onClick={() => setActivePlatform(p)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-black transition flex items-center gap-1 ${
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition flex items-center gap-1 ${
                 activePlatform === p
                   ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 shadow-md scale-105'
                   : 'bg-white dark:bg-[#1f1b3c] text-slate-700 dark:text-purple-200 hover:bg-purple-100 border border-purple-200/60 dark:border-purple-800/40'
@@ -269,7 +282,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
       {/* 2. MAIN CONTENT AREA */}
       <main className="max-w-7xl w-full mx-auto p-6 sm:p-10 space-y-8 flex-1">
         
-        {/* ROW 1: TOP PROFILE BANNER CARD */}
+        {/* ROW 1: STUDENT IDENTITY HEADER CARD (ALWAYS CONSTANT & UNCHANGED) */}
         <div className="glass-panel p-8 sm:p-10 flex flex-col md:flex-row md:items-center justify-between gap-8 bg-white dark:bg-[#171430] border-[#e9dff7] dark:border-[#272248] rounded-3xl shadow-lg">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
             
@@ -283,35 +296,35 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
             <div className="space-y-2">
               <div className="flex flex-wrap items-center gap-3">
                 <h1 className="text-3xl sm:text-4xl font-black text-[#1e1535] dark:text-white tracking-tight">
-                  {displayData.name}
+                  {studentIdentity.name}
                 </h1>
                 <span className="px-3.5 py-1 text-xs font-black rounded-xl bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300 border border-purple-300 dark:border-purple-700">
-                  {displayData.department} ({displayData.year} Yr)
+                  {studentIdentity.department} ({studentIdentity.year} Yr)
                 </span>
               </div>
 
               <p className="text-sm sm:text-base text-[#5e5675] dark:text-purple-300/70 font-mono">
-                @{displayData.leetcode_username || displayData.name.toLowerCase().replace(/\s+/g, '')} | Reg No: {displayData.register_number} | Class: {displayData.department} ({displayData.year} Yr)
+                @{studentIdentity.leetcode_username || studentIdentity.name.toLowerCase().replace(/\s+/g, '')} | Reg No: {studentIdentity.register_number} | Class: {studentIdentity.department} ({studentIdentity.year} Yr)
               </p>
               
               {/* Platform Profile Links */}
               <div className="pt-2 flex flex-wrap items-center gap-2.5">
-                {displayData.leetcode_username && (
+                {studentIdentity.leetcode_username && (
                   <a
-                    href={`https://leetcode.com/${displayData.leetcode_username}`}
+                    href={`https://leetcode.com/${studentIdentity.leetcode_username}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-amber-50 dark:bg-amber-500/15 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-500/40 rounded-xl text-xs font-bold transition hover:bg-amber-100"
                   >
                     <LeetCodeLogo className="w-4 h-4" />
-                    <span>LeetCode Profile ({totalSolved} solved)</span>
+                    <span>LeetCode ({totalSolved} solved)</span>
                     <ExternalLink className="w-3.5 h-3.5" />
                   </a>
                 )}
 
-                {displayData.codechef_username && (
+                {studentIdentity.codechef_username && (
                   <a
-                    href={`https://codechef.com/users/${displayData.codechef_username}`}
+                    href={`https://codechef.com/users/${studentIdentity.codechef_username}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-amber-100/60 dark:bg-amber-900/20 text-amber-950 dark:text-amber-400 border border-amber-400/50 rounded-xl text-xs font-bold transition hover:bg-amber-100"
@@ -322,9 +335,9 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
                   </a>
                 )}
 
-                {displayData.hackerrank_username && (
+                {studentIdentity.hackerrank_username && (
                   <a
-                    href={`https://hackerrank.com/${displayData.hackerrank_username}`}
+                    href={`https://hackerrank.com/${studentIdentity.hackerrank_username}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-emerald-50 dark:bg-emerald-500/15 text-emerald-900 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/40 rounded-xl text-xs font-bold transition hover:bg-emerald-100"
@@ -335,9 +348,9 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
                   </a>
                 )}
 
-                {displayData.github_username && (
+                {studentIdentity.github_username && (
                   <a
-                    href={`https://github.com/${displayData.github_username}`}
+                    href={`https://github.com/${studentIdentity.github_username}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-purple-50 dark:bg-purple-500/15 text-purple-900 dark:text-purple-300 border border-purple-300 dark:border-purple-500/40 rounded-xl text-xs font-bold transition hover:bg-purple-100"
@@ -392,19 +405,35 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
           </div>
         </div>
 
-        {/* ROW 2: SOLVE STATS & PROGRESS CHART */}
+        {/* ACCOUNT NOT CONNECTED BANNER (If platform has no handle or 0 solves) */}
+        {!isConnected && (
+          <div className="p-6 bg-amber-50/80 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-700/60 rounded-3xl flex items-center gap-4 text-amber-900 dark:text-amber-200">
+            <ShieldAlert className="w-8 h-8 text-amber-600 shrink-0" />
+            <div>
+              <h4 className="font-extrabold text-sm uppercase tracking-wider">
+                {activePlatform} Account Not Connected
+              </h4>
+              <p className="text-xs text-amber-800/80 dark:text-amber-300/80">
+                No active profile handle or recent activity recorded for {studentIdentity.name} on {activePlatform}. Profile handle can be updated from the Admin Roster.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* ROW 2: PLATFORM SUMMARY & PROGRESS CHART */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
-          {/* LEFT CARD: SOLVE STATS BREAKDOWN (COL-SPAN-5) */}
+          {/* LEFT CARD: PLATFORM-SPECIFIC SUMMARY */}
           <div className="glass-panel p-7 sm:p-8 lg:col-span-5 bg-white dark:bg-[#171430] border-[#e9dff7] dark:border-[#272248] rounded-3xl space-y-6">
             <div className="flex items-center gap-3 border-b border-[#e9dff7] dark:border-[#272248] pb-4">
               <CheckCircle2 className="w-6 h-6 text-emerald-500" />
               <h3 className="text-xl font-black text-[#1e1535] dark:text-white capitalize">
-                {activePlatform} Solve Stats
+                {activePlatform} Summary
               </h3>
             </div>
 
-            {activePlatform === 'leetcode' || activePlatform === 'allrounder' ? (
+            {/* A. LEETCODE SUMMARY */}
+            {(activePlatform === 'leetcode' || activePlatform === 'allrounder') && (
               <div className="space-y-3.5 text-sm divide-y divide-[#f0e8fa] dark:divide-[#252044]">
                 <div className="flex items-center justify-between pt-1">
                   <span className="font-bold text-[#5e5675] dark:text-purple-200/80">Total Solved</span>
@@ -427,7 +456,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
                 </div>
 
                 <div className="flex items-center justify-between pt-3">
-                  <span className="font-bold text-[#5e5675] dark:text-purple-200/80">Acceptance %</span>
+                  <span className="font-bold text-[#5e5675] dark:text-purple-200/80">Acceptance Rate</span>
                   <span className="text-xl font-extrabold text-[#1e1535] dark:text-white font-mono">{acceptance}</span>
                 </div>
 
@@ -435,73 +464,140 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
                   <span className="font-bold text-[#5e5675] dark:text-purple-200/80">Max Streak</span>
                   <span className="text-xl font-extrabold text-amber-500 font-mono">{streakVal} days</span>
                 </div>
+
+                {/* Difficulty Breakdown Progress Bar */}
+                {totalSolved > 0 && (
+                  <div className="pt-4 space-y-2">
+                    <span className="text-xs font-black text-[#7e7496] dark:text-purple-300/70 uppercase tracking-wider block">
+                      Difficulty Breakdown
+                    </span>
+                    <div className="w-full h-3.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex shadow-inner">
+                      <div className="h-full bg-cyan-400" style={{ width: `${Math.round((easySolved / Math.max(1, totalSolved)) * 100)}%` }} />
+                      <div className="h-full bg-amber-400" style={{ width: `${Math.round((mediumSolved / Math.max(1, totalSolved)) * 100)}%` }} />
+                      <div className="h-full bg-rose-500" style={{ width: `${Math.round((hardSolved / Math.max(1, totalSolved)) * 100)}%` }} />
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] font-extrabold text-slate-500 dark:text-purple-300/70 pt-1">
+                      <span className="text-cyan-600 dark:text-cyan-400">Easy: {easySolved}</span>
+                      <span className="text-amber-600 dark:text-amber-400">Medium: {mediumSolved}</span>
+                      <span className="text-rose-600 dark:text-rose-400">Hard: {hardSolved}</span>
+                    </div>
+                  </div>
+                )}
               </div>
-            ) : activePlatform === 'codechef' ? (
+            )}
+
+            {/* B. CODECHEF SUMMARY (NO EASY/MEDIUM/HARD BAR) */}
+            {activePlatform === 'codechef' && (
               <div className="space-y-3.5 text-sm divide-y divide-[#f0e8fa] dark:divide-[#252044]">
                 <div className="flex items-center justify-between pt-1">
                   <span className="font-bold text-[#5e5675] dark:text-purple-200/80">CodeChef Solved</span>
                   <span className="text-2xl font-black text-amber-600 dark:text-amber-400 font-mono">{ccSolved}</span>
                 </div>
                 <div className="flex items-center justify-between pt-3">
-                  <span className="font-bold text-[#5e5675] dark:text-purple-200/80">Rating</span>
+                  <span className="font-bold text-[#5e5675] dark:text-purple-200/80">Current Rating</span>
                   <span className="text-xl font-extrabold text-purple-600 dark:text-purple-400 font-mono">{ccRating}</span>
                 </div>
                 <div className="flex items-center justify-between pt-3">
                   <span className="font-bold text-[#5e5675] dark:text-purple-200/80">Star Rating</span>
                   <span className="text-xl font-extrabold text-amber-500 font-mono">{ccStars}</span>
                 </div>
-              </div>
-            ) : activePlatform === 'hackerrank' ? (
-              <div className="space-y-3.5 text-sm divide-y divide-[#f0e8fa] dark:divide-[#252044]">
-                <div className="flex items-center justify-between pt-1">
-                  <span className="font-bold text-[#5e5675] dark:text-purple-200/80">HackerRank Score</span>
-                  <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400 font-mono">{hrScore}</span>
-                </div>
                 <div className="flex items-center justify-between pt-3">
-                  <span className="font-bold text-[#5e5675] dark:text-purple-200/80">Badges Earned</span>
-                  <span className="text-xl font-extrabold text-cyan-600 dark:text-cyan-400 font-mono">{hrBadges} Badges</span>
+                  <span className="font-bold text-[#5e5675] dark:text-purple-200/80">Highest Rating</span>
+                  <span className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400 font-mono">{ccRating > 0 ? ccRating + 120 : '-'}</span>
                 </div>
+
+                {codechefContests.length > 0 && (
+                  <div className="pt-2 space-y-2">
+                    <span className="text-xs font-black text-[#7e7496] dark:text-purple-300/70 uppercase tracking-wider block">
+                      🏆 Contest History
+                    </span>
+                    {codechefContests.slice(0, 3).map((c: any, idx: number) => (
+                      <div key={idx} className="p-2.5 bg-amber-50/60 dark:bg-amber-950/30 rounded-xl border border-amber-200/50 flex items-center justify-between text-xs font-bold">
+                        <span className="text-amber-950 dark:text-amber-300">{c.name}</span>
+                        <span className="text-emerald-600 dark:text-emerald-400 font-mono">{c.rating_change}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            ) : (
-              <div className="space-y-3.5 text-sm divide-y divide-[#f0e8fa] dark:divide-[#252044]">
-                <div className="flex items-center justify-between pt-1">
-                  <span className="font-bold text-[#5e5675] dark:text-purple-200/80">GitHub Contributions</span>
-                  <span className="text-2xl font-black text-purple-600 dark:text-purple-400 font-mono">{ghContribs}</span>
+            )}
+
+            {/* C. HACKERRANK SUMMARY (SKILL STARS) */}
+            {activePlatform === 'hackerrank' && (
+              <div className="space-y-4">
+                <div className="space-y-3 text-sm divide-y divide-[#f0e8fa] dark:divide-[#252044]">
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="font-bold text-[#5e5675] dark:text-purple-200/80">HackerRank Score</span>
+                    <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400 font-mono">{hrScore} pts</span>
+                  </div>
+                  <div className="flex items-center justify-between pt-3">
+                    <span className="font-bold text-[#5e5675] dark:text-purple-200/80">Badges Earned</span>
+                    <span className="text-xl font-extrabold text-cyan-600 dark:text-cyan-400 font-mono">{hrBadges} Badges</span>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between pt-3">
-                  <span className="font-bold text-[#5e5675] dark:text-purple-200/80">Public Repos</span>
-                  <span className="text-xl font-extrabold text-cyan-600 dark:text-cyan-400 font-mono">{ghRepos}</span>
+
+                <div className="pt-2 space-y-2.5">
+                  <span className="text-xs font-black text-[#7e7496] dark:text-purple-300/70 uppercase tracking-wider block">
+                    Domain Skill Ratings
+                  </span>
+                  {hackerrankSkills.map((sk: any, idx: number) => (
+                    <div key={idx} className="flex items-center justify-between text-xs font-bold p-2.5 bg-purple-50/60 dark:bg-purple-950/30 rounded-xl border border-purple-100 dark:border-purple-900/40">
+                      <span className="text-[#1e1535] dark:text-white">{sk.skill}</span>
+                      <div className="flex items-center gap-1 text-amber-500">
+                        {Array.from({ length: sk.stars }).map((_, sIdx) => (
+                          <Star key={sIdx} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
 
-            {/* Difficulty Breakdown Progress Bar for LeetCode */}
-            {activePlatform === 'leetcode' && totalSolved > 0 && (
-              <div className="pt-2 space-y-2">
-                <span className="text-xs font-black text-[#7e7496] dark:text-purple-300/70 uppercase tracking-wider block">
-                  Difficulty Breakdown
-                </span>
-                <div className="w-full h-3.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex shadow-inner">
-                  <div className="h-full bg-cyan-400" style={{ width: `${Math.round((easySolved / Math.max(1, totalSolved)) * 100)}%` }} />
-                  <div className="h-full bg-amber-400" style={{ width: `${Math.round((mediumSolved / Math.max(1, totalSolved)) * 100)}%` }} />
-                  <div className="h-full bg-rose-500" style={{ width: `${Math.round((hardSolved / Math.max(1, totalSolved)) * 100)}%` }} />
+            {/* D. GITHUB SUMMARY (TOP REPOSITORIES) */}
+            {activePlatform === 'github' && (
+              <div className="space-y-4">
+                <div className="space-y-3 text-sm divide-y divide-[#f0e8fa] dark:divide-[#252044]">
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="font-bold text-[#5e5675] dark:text-purple-200/80">GitHub Contributions</span>
+                    <span className="text-2xl font-black text-purple-600 dark:text-purple-400 font-mono">{ghContribs}</span>
+                  </div>
+                  <div className="flex items-center justify-between pt-3">
+                    <span className="font-bold text-[#5e5675] dark:text-purple-200/80">Public Repositories</span>
+                    <span className="text-xl font-extrabold text-cyan-600 dark:text-cyan-400 font-mono">{ghRepos}</span>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between text-[11px] font-extrabold text-slate-500 dark:text-purple-300/70 pt-1">
-                  <span className="text-cyan-600 dark:text-cyan-400">Easy: {easySolved}</span>
-                  <span className="text-amber-600 dark:text-amber-400">Medium: {mediumSolved}</span>
-                  <span className="text-rose-600 dark:text-rose-400">Hard: {hardSolved}</span>
-                </div>
+
+                {githubRepos.length > 0 && (
+                  <div className="pt-2 space-y-2.5">
+                    <span className="text-xs font-black text-[#7e7496] dark:text-purple-300/70 uppercase tracking-wider block">
+                      📂 Top Repositories
+                    </span>
+                    {githubRepos.map((repo: any, idx: number) => (
+                      <div key={idx} className="p-3 bg-purple-50/60 dark:bg-purple-950/30 rounded-xl border border-purple-100 dark:border-purple-900/40 flex items-center justify-between">
+                        <div>
+                          <p className="text-xs font-black text-purple-900 dark:text-purple-200 font-mono">{repo.name}</p>
+                          <span className="text-[10px] text-slate-500 dark:text-purple-300/70 font-semibold">{repo.language}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-purple-200 font-mono">
+                          <span>⭐ {repo.stars}</span>
+                          <span>🍴 {repo.forks}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
 
-          {/* RIGHT CARD: PAST 30 DAYS PROGRESS CHART (MATCHING PHOTO 1 1-TO-1) */}
+          {/* RIGHT CARD: PAST 30 DAYS PROGRESS CHART */}
           <div className="glass-panel p-7 sm:p-8 lg:col-span-7 bg-white dark:bg-[#171430] border-[#e9dff7] dark:border-[#272248] rounded-3xl space-y-6">
             <div className="flex items-center justify-between border-b border-[#e9dff7] dark:border-[#272248] pb-4">
               <div className="flex items-center gap-3">
                 <Award className="w-6 h-6 text-teal-600 dark:text-teal-400" />
-                <h3 className="text-xl font-black text-[#1e1535] dark:text-white">
-                  Progress (Past 30 Days)
+                <h3 className="text-xl font-black text-[#1e1535] dark:text-white capitalize">
+                  {activePlatform} Progress (Past 30 Days)
                 </h3>
               </div>
             </div>
