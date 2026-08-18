@@ -1,4 +1,4 @@
-import type { PlatformType, Student, LeaderboardItem, ScannerRecord, AdminUser } from '../types';
+import type { PlatformType, Student, ScannerRecord, AdminUser } from '../types';
 
 const getApiBaseUrl = (): string => {
   let envUrl = import.meta.env.VITE_API_URL;
@@ -118,7 +118,7 @@ export async function getDashboardSummary(
 }
 
 export async function getLeaderboard(
-  platform: PlatformType,
+  platformOrOpts: PlatformType | { platform?: string; department?: string; year?: string; section?: string; search?: string; role?: string; user_dept?: string; sort_by?: string },
   department: string = 'All',
   year: string = 'All',
   section: string = 'All',
@@ -126,16 +126,45 @@ export async function getLeaderboard(
   role: string = '',
   userDept: string = '',
   sort: string = 'overall'
-): Promise<{ total: number; data: LeaderboardItem[] }> {
+): Promise<any> {
+  let p = 'leetcode';
+  let d = 'All';
+  let y = 'All';
+  let sec = 'All';
+  let s = '';
+  let r = '';
+  let ud = '';
+  let sb = 'overall';
+
+  if (typeof platformOrOpts === 'object' && platformOrOpts !== null) {
+    p = platformOrOpts.platform || 'leetcode';
+    d = platformOrOpts.department || 'All';
+    y = platformOrOpts.year || 'All';
+    sec = platformOrOpts.section || 'All';
+    s = platformOrOpts.search || '';
+    r = platformOrOpts.role || '';
+    ud = platformOrOpts.user_dept || '';
+    sb = platformOrOpts.sort_by || 'overall';
+  } else {
+    p = platformOrOpts || 'leetcode';
+    d = department;
+    y = year;
+    sec = section;
+    s = search;
+    r = role;
+    ud = userDept;
+    sb = sort;
+  }
+
   const params = new URLSearchParams({
-    platform,
-    department,
-    year,
-    section,
-    search,
-    role,
-    userDept,
-    sort_by: sort
+    platform: p,
+    department: d,
+    year: y,
+    section: sec,
+    search: s,
+    role: r,
+    user_dept: ud,
+    sort_by: sb
   });
 
   const res = await fetch(`${API_BASE}/leaderboard?${params.toString()}`);
