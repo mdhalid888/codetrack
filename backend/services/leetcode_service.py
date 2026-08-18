@@ -1,7 +1,10 @@
 import requests
+import json
 from datetime import datetime
 
 LEETCODE_GRAPHQL_URL = "https://leetcode.com/graphql"
+
+PROBLEM_DIFFICULTY_CACHE = {}
 
 def format_time_ago(ts):
     try:
@@ -25,6 +28,37 @@ def format_time_ago(ts):
     except Exception:
         return "recently"
 
+def get_leetcode_difficulty(title_slug: str) -> str:
+    if not title_slug:
+        return "MEDIUM"
+    if title_slug in PROBLEM_DIFFICULTY_CACHE:
+        return PROBLEM_DIFFICULTY_CACHE[title_slug]
+    
+    query = """
+    query questionTitle($titleSlug: String!) {
+      question(titleSlug: $titleSlug) {
+        difficulty
+      }
+    }
+    """
+    try:
+        res = requests.post(
+            LEETCODE_GRAPHQL_URL,
+            json={"query": query, "variables": {"titleSlug": title_slug}},
+            headers={"Content-Type": "application/json"},
+            timeout=3
+        )
+        if res.status_code == 200:
+            data = res.json()
+            diff = data.get("data", {}).get("question", {}).get("difficulty")
+            if diff:
+                diff_upper = diff.upper()
+                PROBLEM_DIFFICULTY_CACHE[title_slug] = diff_upper
+                return diff_upper
+    except Exception:
+        pass
+    return "MEDIUM"
+
 def fetch_leetcode_stats(username: str) -> dict:
     if not username:
         return {
@@ -38,6 +72,7 @@ def fetch_leetcode_stats(username: str) -> dict:
             "global_rank": "N/A",
             "active_days": 0,
             "contests_count": 0,
+            "submission_calendar": {},
             "recent_submissions": []
         }
 
@@ -58,6 +93,7 @@ def fetch_leetcode_stats(username: str) -> dict:
         }
         userCalendar {
           totalActiveDays
+          submissionCalendar
         }
       }
       userContestRanking(username: $username) {
@@ -65,7 +101,7 @@ def fetch_leetcode_stats(username: str) -> dict:
         attendedContestsCount
         globalRanking
       }
-      recentAcSubmissionList(username: $username, limit: 15) {
+      recentAcSubmissionList(username: $username, limit: 20) {
         title
         titleSlug
         timestamp
@@ -99,6 +135,7 @@ def fetch_leetcode_stats(username: str) -> dict:
                     "global_rank": "N/A",
                     "active_days": 0,
                     "contests_count": 0,
+                    "submission_calendar": {},
                     "recent_submissions": []
                 }
 
@@ -121,7 +158,17 @@ def fetch_leetcode_stats(username: str) -> dict:
                     hard_solved = cnt
 
             ranking = matched.get("profile", {}).get("ranking", "N/A")
-            active_days = matched.get("userCalendar", {}).get("totalActiveDays", 0)
+            user_cal = matched.get("userCalendar", {}) or {}
+            active_days = user_cal.get("totalActiveDays", 0)
+            
+            # Extract real submission calendar JSON map
+            sub_cal_raw = user_cal.get("submissionCalendar", "{}")
+            sub_calendar = {}
+            if sub_cal_raw:
+                try:
+                    sub_calendar = json.loads(sub_cal_raw)
+                except Exception:
+                    sub_calendar = {}
 
             contest_info = data.get("data", {}).get("userContestRanking") or {}
             rating = round(contest_info.get("rating", 0))
@@ -129,11 +176,18 @@ def fetch_leetcode_stats(username: str) -> dict:
 
             raw_recent = data.get("data", {}).get("recentAcSubmissionList") or []
             recent_submissions = []
+
             for sub in raw_recent:
+                title = sub.get("title", "")
+                slug = sub.get("titleSlug", "")
+                ts = sub.get("timestamp")
+                
+                diff_upper = get_leetcode_difficulty(slug)
+                
                 recent_submissions.append({
-                    "title": sub.get("title", "Problem"),
-                    "time_ago": format_time_ago(sub.get("timestamp")),
-                    "difficulty": "Medium"  # Default difficulty indicator
+                    "title": title,
+                    "difficulty": diff_upper,
+                    "time_ago": format_time_ago(ts) if ts else "recently"
                 })
 
             return {
@@ -144,15 +198,16 @@ def fetch_leetcode_stats(username: str) -> dict:
                 "medium_solved": medium_solved,
                 "hard_solved": hard_solved,
                 "rating": rating,
-                "global_rank": str(ranking) if ranking else "N/A",
+                "global_rank": str(ranking),
                 "active_days": active_days,
                 "contests_count": contests_count,
+                "submission_calendar": sub_calendar,
                 "recent_submissions": recent_submissions
             }
         else:
             return {
-                "status": "data_unavailable",
-                "error_message": f"LeetCode HTTP {response.status_code}",
+                "status": "error",
+                "error_message": f"LeetCode returned status {response.status_code}",
                 "problems_solved": 0,
                 "easy_solved": 0,
                 "medium_solved": 0,
@@ -161,11 +216,12 @@ def fetch_leetcode_stats(username: str) -> dict:
                 "global_rank": "N/A",
                 "active_days": 0,
                 "contests_count": 0,
+                "submission_calendar": {},
                 "recent_submissions": []
             }
     except Exception as e:
         return {
-            "status": "data_unavailable",
+            "status": "error",
             "error_message": str(e),
             "problems_solved": 0,
             "easy_solved": 0,
@@ -175,5 +231,6 @@ def fetch_leetcode_stats(username: str) -> dict:
             "global_rank": "N/A",
             "active_days": 0,
             "contests_count": 0,
+            "submission_calendar": {},
             "recent_submissions": []
         }

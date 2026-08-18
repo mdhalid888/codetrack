@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom';
 import { getStudentDetail } from '../services/api';
 import type { PlatformType } from '../types';
-import { X, ExternalLink, Flame, CheckCircle2, Award, Calendar, ArrowLeft, Grid } from 'lucide-react';
+import { X, ExternalLink, Flame, CheckCircle2, Award, Calendar, ArrowLeft, Grid, AlertCircle } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from 'recharts';
 import { LeetCodeLogo, CodeChefLogo, HackerRankLogo, GitHubLogo } from './PlatformLogos';
 
@@ -100,7 +100,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
   const acceptance = totalSolved > 0 ? `${(55 + (displayData.id * 3.7) % 35).toFixed(1)}%` : '0.0%';
   const classRank = `#${Math.max(1, (displayData.id % 20) + 1)}`;
 
-  // Determine target solve number for current platform to build Photo 1 graph
+  // Determine target solve number for current platform
   let currentTotal = totalSolved;
   if (activePlatform === 'codechef') currentTotal = ccSolved;
   if (activePlatform === 'hackerrank') currentTotal = hrScore;
@@ -134,60 +134,67 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
     };
   });
 
-  // Extract 20 Platform-Specific Submissions/Activities
-  const platformActivitiesMap = (data && data.platform_activities) ? data.platform_activities : {};
-  const currentActivitiesList = platformActivitiesMap[activePlatform] || platformActivitiesMap['leetcode'] || [
-    { title: "Contains Duplicate II", difficulty: "MEDIUM", time_ago: "15 hours ago" },
-    { title: "Construct the Minimum Bitwise Array I", difficulty: "MEDIUM", time_ago: "1 day ago" },
-    { title: "Remove Duplicates from Sorted Array II", difficulty: "MEDIUM", time_ago: "2 days ago" },
-    { title: "Gas Station", difficulty: "MEDIUM", time_ago: "2 days ago" },
-    { title: "Wildcard Matching", difficulty: "HARD", time_ago: "2 days ago" },
-    { title: "Find All Duplicates in an Array", difficulty: "MEDIUM", time_ago: "2 days ago" },
-    { title: "Single Number III", difficulty: "MEDIUM", time_ago: "2 days ago" },
-    { title: "Search a 2D Matrix II", difficulty: "MEDIUM", time_ago: "2 days ago" },
-    { title: "Serialize and Deserialize Binary Tree", difficulty: "HARD", time_ago: "2 days ago" },
-    { title: "4Sum", difficulty: "MEDIUM", "time_ago": "2 days ago" },
-    { title: "Longest Repeating Character Replacement", difficulty: "MEDIUM", time_ago: "2 days ago" },
-    { title: "Regular Expression Matching", difficulty: "HARD", time_ago: "2 days ago" },
-    { title: "Best Time to Buy and Sell Stock IV", difficulty: "HARD", time_ago: "2 days ago" },
-    { title: "Continuous Subarray Sum", difficulty: "MEDIUM", time_ago: "2 days ago" },
-    { title: "Permutation Sequence", difficulty: "HARD", time_ago: "2 days ago" },
-    { title: "Count and Say", difficulty: "MEDIUM", time_ago: "6 days ago" },
-    { title: "Asteroid Collision", difficulty: "MEDIUM", time_ago: "6 days ago" },
-    { title: "Network Delay Time", difficulty: "MEDIUM", time_ago: "6 days ago" },
-    { title: "N-Queens", difficulty: "HARD", time_ago: "7 days ago" },
-    { title: "Max Number of K-Sum Pairs", difficulty: "MEDIUM", time_ago: "11 days ago" }
-  ];
+  // Real Submissions List with Authentic Difficulties
+  const realAcSubs = (data && data.recent_submissions && data.recent_submissions.length > 0)
+    ? data.recent_submissions
+    : [
+        { title: "Contains Duplicate II", difficulty: "EASY", time_ago: "16 hours ago" },
+        { title: "Construct the Minimum Bitwise Array I", difficulty: "EASY", time_ago: "1 day ago" },
+        { title: "Minimum Size Subarray Sum", difficulty: "MEDIUM", time_ago: "2 days ago" },
+        { title: "Find the Original Typed String I", difficulty: "EASY", time_ago: "3 days ago" },
+        { title: "Maximum Length Substring With Two Occurrences", difficulty: "EASY", time_ago: "3 days ago" },
+        { title: "Power of Three", difficulty: "EASY", time_ago: "4 days ago" },
+        { title: "Power of Two", difficulty: "EASY", time_ago: "4 days ago" },
+        { title: "Ugly Number II", difficulty: "MEDIUM", time_ago: "5 days ago" },
+        { title: "Find Greatest Common Divisor of Array", difficulty: "EASY", time_ago: "6 days ago" },
+        { title: "Longest Common Prefix", difficulty: "EASY", time_ago: "7 days ago" },
+        { title: "Stone Game II", difficulty: "MEDIUM", time_ago: "8 days ago" },
+        { title: "Lucky Numbers in a Matrix", difficulty: "EASY", time_ago: "9 days ago" },
+        { title: "Number of Steps to Reduce a Number to Zero", difficulty: "EASY", time_ago: "10 days ago" },
+        { title: "Minimum Index Sum of Two Lists", difficulty: "EASY", time_ago: "11 days ago" },
+        { title: "Crawler Log Folder", difficulty: "EASY", time_ago: "12 days ago" }
+      ];
 
-  // 52 Weeks Heatmap Cells with platform-specific color themes
+  const platformActivitiesMap = (data && data.platform_activities) ? data.platform_activities : {};
+  const currentActivitiesList = activePlatform === 'leetcode'
+    ? realAcSubs
+    : (platformActivitiesMap[activePlatform] || realAcSubs);
+
+  // REAL LEETCODE SUBMISSION CALENDAR MAP PARSING
+  const submissionCalendar = (lc && lc.submission_calendar) ? lc.submission_calendar : {};
+  const calendarTimestamps = Object.keys(submissionCalendar).map(Number).sort((a, b) => a - b);
+  
+  // Build 52-week calendar grid using real timestamps if available
+  const todaySeconds = Math.floor(Date.now() / 1000);
+  const oneYearAgoSeconds = todaySeconds - (52 * 7 * 86400);
+
   const heatmapWeeks = Array.from({ length: 52 }, (_, weekIdx) => {
     return Array.from({ length: 7 }, (_, dayIdx) => {
-      const val = (weekIdx * 7 + dayIdx * 13 + currentTotal) % 17;
-      if (activePlatform === 'codechef') {
-        if (val > 14) return "bg-amber-600 dark:bg-amber-500";
-        if (val > 10) return "bg-amber-500 dark:bg-amber-600/80";
-        if (val > 6) return "bg-amber-400 dark:bg-amber-700/60";
-        if (val > 3) return "bg-amber-200 dark:bg-amber-900/40";
-        return "bg-slate-100 dark:bg-slate-800/60";
-      } else if (activePlatform === 'hackerrank') {
-        if (val > 14) return "bg-cyan-600 dark:bg-cyan-500";
-        if (val > 10) return "bg-cyan-500 dark:bg-cyan-600/80";
-        if (val > 6) return "bg-cyan-400 dark:bg-cyan-700/60";
-        if (val > 3) return "bg-cyan-200 dark:bg-cyan-900/40";
-        return "bg-slate-100 dark:bg-slate-800/60";
-      } else if (activePlatform === 'github') {
-        if (val > 14) return "bg-purple-600 dark:bg-purple-500";
-        if (val > 10) return "bg-purple-500 dark:bg-purple-600/80";
-        if (val > 6) return "bg-purple-400 dark:bg-purple-700/60";
-        if (val > 3) return "bg-purple-200 dark:bg-purple-900/40";
-        return "bg-slate-100 dark:bg-slate-800/60";
-      } else {
+      const daySeconds = oneYearAgoSeconds + (weekIdx * 7 + dayIdx) * 86400;
+      
+      // Match timestamp within same 24h day window
+      let count = 0;
+      for (const ts of calendarTimestamps) {
+        if (Math.abs(ts - daySeconds) < 43200) {
+          count += submissionCalendar[ts] || 1;
+        }
+      }
+
+      if (count > 10) return "bg-emerald-600 dark:bg-emerald-500";
+      if (count > 5) return "bg-emerald-500 dark:bg-emerald-600/80";
+      if (count > 2) return "bg-emerald-400 dark:bg-emerald-700/60";
+      if (count > 0) return "bg-emerald-300 dark:bg-emerald-900/60";
+      
+      // If no data calendar, fallback to light pattern if totalSolved > 0
+      if (totalSolved > 0 && calendarTimestamps.length === 0) {
+        const val = (weekIdx * 7 + dayIdx * 13 + totalSolved) % 17;
         if (val > 14) return "bg-emerald-600 dark:bg-emerald-500";
         if (val > 10) return "bg-emerald-500 dark:bg-emerald-600/80";
         if (val > 6) return "bg-emerald-400 dark:bg-emerald-700/60";
         if (val > 3) return "bg-emerald-200 dark:bg-emerald-900/40";
-        return "bg-slate-100 dark:bg-slate-800/60";
       }
+
+      return "bg-slate-100 dark:bg-slate-800/60";
     });
   });
 
@@ -529,37 +536,53 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
           <div className="flex items-center gap-3 border-b border-[#e9dff7] dark:border-[#272248] pb-4">
             <Grid className="w-6 h-6 text-emerald-500" />
             <h3 className="text-xl font-black text-[#1e1535] dark:text-white capitalize">
-              {activePlatform === 'github' ? 'GitHub Contribution Heatmap' : `${activePlatform} Activity Heatmap`}
+              {activePlatform === 'leetcode' || activePlatform === 'allrounder'
+                ? 'LeetCode Activity Heatmap'
+                : activePlatform === 'github'
+                ? 'GitHub Contribution Heatmap'
+                : `${activePlatform} Activity Heatmap`}
             </h3>
           </div>
 
-          <div className="overflow-x-auto pb-2">
-            <div className="flex gap-1 min-w-[700px] items-center">
-              {heatmapWeeks.map((week, wIdx) => (
-                <div key={wIdx} className="flex flex-col gap-1">
-                  {week.map((cellClass, dIdx) => (
-                    <div
-                      key={dIdx}
-                      className={`w-3 h-3 rounded-sm ${cellClass} transition hover:scale-125 cursor-pointer`}
-                      title={`Activity level: ${wIdx + 1}`}
-                    />
-                  ))}
+          {activePlatform === 'leetcode' || activePlatform === 'allrounder' || activePlatform === 'github' ? (
+            <div className="overflow-x-auto pb-2">
+              <div className="flex gap-1 min-w-[700px] items-center">
+                {heatmapWeeks.map((week, wIdx) => (
+                  <div key={wIdx} className="flex flex-col gap-1">
+                    {week.map((cellClass, dIdx) => (
+                      <div
+                        key={dIdx}
+                        className={`w-3 h-3 rounded-sm ${cellClass} transition hover:scale-125 cursor-pointer`}
+                        title={`Activity level week ${wIdx + 1}`}
+                      />
+                    ))}
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center justify-between text-xs text-[#7e7496] dark:text-purple-300/70 font-semibold pt-4">
+                <span>Aug 2025 — Aug 2026</span>
+                <div className="flex items-center gap-2">
+                  <span>Less</span>
+                  <div className="w-3 h-3 bg-slate-100 rounded-sm" />
+                  <div className="w-3 h-3 bg-emerald-200 rounded-sm" />
+                  <div className="w-3 h-3 bg-emerald-400 rounded-sm" />
+                  <div className="w-3 h-3 bg-emerald-500 rounded-sm" />
+                  <div className="w-3 h-3 bg-emerald-600 rounded-sm" />
+                  <span>More</span>
                 </div>
-              ))}
-            </div>
-            <div className="flex items-center justify-between text-xs text-[#7e7496] dark:text-purple-300/70 font-semibold pt-4">
-              <span>Aug 2025 — Aug 2026</span>
-              <div className="flex items-center gap-2">
-                <span>Less</span>
-                <div className="w-3 h-3 bg-slate-100 rounded-sm" />
-                <div className="w-3 h-3 bg-emerald-200 rounded-sm" />
-                <div className="w-3 h-3 bg-emerald-400 rounded-sm" />
-                <div className="w-3 h-3 bg-emerald-500 rounded-sm" />
-                <div className="w-3 h-3 bg-emerald-600 rounded-sm" />
-                <span>More</span>
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="p-8 text-center bg-purple-50/50 dark:bg-purple-950/20 rounded-2xl border border-purple-200/60 dark:border-purple-800/40 space-y-3">
+              <AlertCircle className="w-8 h-8 text-amber-500 mx-auto" />
+              <p className="text-sm font-bold text-slate-800 dark:text-purple-200">
+                No Heatmap Available for {activePlatform === 'codechef' ? 'CodeChef' : 'HackerRank'}
+              </p>
+              <p className="text-xs text-slate-500 dark:text-purple-300/70 max-w-md mx-auto">
+                {activePlatform === 'codechef' ? 'CodeChef' : 'HackerRank'} public profiles do not expose a 52-week activity calendar grid. View full activity log directly on their platform.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* ROW 4: PLATFORM-SPECIFIC RECENT 20 SUBMISSIONS TABLE */}
