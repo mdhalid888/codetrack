@@ -106,11 +106,12 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
   const acceptance = totalSolved > 0 ? `${(55 + (studentIdentity.id * 3.7) % 35).toFixed(1)}%` : '0.0%';
   const classRank = `#${Math.max(1, (studentIdentity.id % 20) + 1)}`;
 
-  // Determine connected state for selected platform
+  // Determine connected state for selected platform based strictly on username presence
   let isConnected = true;
-  if (activePlatform === 'codechef' && (!studentIdentity.codechef_username || ccSolved === 0)) isConnected = false;
-  if (activePlatform === 'hackerrank' && (!studentIdentity.hackerrank_username || hrScore === 0)) isConnected = false;
-  if (activePlatform === 'github' && (!studentIdentity.github_username || (ghContribs === 0 && ghRepos === 0))) isConnected = false;
+  if (activePlatform === 'leetcode' && !studentIdentity.leetcode_username) isConnected = false;
+  if (activePlatform === 'codechef' && !studentIdentity.codechef_username) isConnected = false;
+  if (activePlatform === 'hackerrank' && !studentIdentity.hackerrank_username) isConnected = false;
+  if (activePlatform === 'github' && !studentIdentity.github_username) isConnected = false;
 
   // Target solve number for progress chart
   let currentTotal = totalSolved;
@@ -167,7 +168,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
   } else if (activePlatform === 'hackerrank') {
     currentActivitiesList = hrScore > 0 ? (platformActivitiesMap['hackerrank'] || []) : [];
   } else if (activePlatform === 'github') {
-    currentActivitiesList = ghContribs > 0 ? (platformActivitiesMap['github'] || []) : [];
+    currentActivitiesList = platformActivitiesMap['github'] || [];
   } else {
     currentActivitiesList = realAcSubs;
   }
@@ -175,6 +176,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
   const githubRepos = (data && data.github_repos) ? data.github_repos : [];
   const hackerrankSkills = (data && data.hackerrank_skills) ? data.hackerrank_skills : [];
   const codechefContests = (data && data.codechef_contests) ? data.codechef_contests : [];
+  const githubDailyContribs = (data && data.github_daily_contribs) ? data.github_daily_contribs : [];
 
   // Heatmap Calendar Grid
   const submissionCalendar = (lc && lc.submission_calendar) ? lc.submission_calendar : {};
@@ -185,11 +187,17 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
   const heatmapWeeks = Array.from({ length: 52 }, (_, weekIdx) => {
     return Array.from({ length: 7 }, (_, dayIdx) => {
       const daySeconds = oneYearAgoSeconds + (weekIdx * 7 + dayIdx) * 86400;
-      let count = 0;
-      for (const ts of calendarTimestamps) {
-        if (Math.abs(ts - daySeconds) < 43200) {
-          count += submissionCalendar[ts] || 1;
-        }
+      
+      // REAL GITHUB CONTRIBUTION CALENDAR PARSING
+      if (activePlatform === 'github' && githubDailyContribs.length > 0) {
+        const itemIdx = weekIdx * 7 + dayIdx;
+        const cItem = githubDailyContribs[itemIdx] || {};
+        const cnt = cItem.count || 0;
+
+        if (cnt > 6) return "bg-purple-600 dark:bg-purple-500";
+        if (cnt > 3) return "bg-purple-500 dark:bg-purple-600/80";
+        if (cnt > 0) return "bg-purple-300 dark:bg-purple-900/60";
+        return "bg-slate-100 dark:bg-slate-800/60";
       }
 
       if (activePlatform === 'codechef') {
@@ -201,13 +209,11 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
         return "bg-slate-100 dark:bg-slate-800/60";
       }
 
-      if (activePlatform === 'github') {
-        const gVal = (weekIdx * 7 + dayIdx * 9 + ghContribs) % 15;
-        if (gVal > 12) return "bg-purple-600 dark:bg-purple-500";
-        if (gVal > 9) return "bg-purple-500 dark:bg-purple-600/80";
-        if (gVal > 6) return "bg-purple-400 dark:bg-purple-700/60";
-        if (gVal > 3) return "bg-purple-200 dark:bg-purple-900/40";
-        return "bg-slate-100 dark:bg-slate-800/60";
+      let count = 0;
+      for (const ts of calendarTimestamps) {
+        if (Math.abs(ts - daySeconds) < 43200) {
+          count += submissionCalendar[ts] || 1;
+        }
       }
 
       if (count > 10) return "bg-emerald-600 dark:bg-emerald-500";
@@ -405,7 +411,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
           </div>
         </div>
 
-        {/* ACCOUNT NOT CONNECTED BANNER (If platform has no handle or 0 solves) */}
+        {/* ACCOUNT NOT CONNECTED BANNER (Only if platform handle is missing) */}
         {!isConnected && (
           <div className="p-6 bg-amber-50/80 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-700/60 rounded-3xl flex items-center gap-4 text-amber-900 dark:text-amber-200">
             <ShieldAlert className="w-8 h-8 text-amber-600 shrink-0" />
@@ -414,7 +420,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
                 {activePlatform} Account Not Connected
               </h4>
               <p className="text-xs text-amber-800/80 dark:text-amber-300/80">
-                No active profile handle or recent activity recorded for {studentIdentity.name} on {activePlatform}. Profile handle can be updated from the Admin Roster.
+                {activePlatform} username not added for {studentIdentity.name}. You can update profile handles from the Admin Roster.
               </p>
             </div>
           </div>
@@ -677,10 +683,10 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
               <div className="flex items-center gap-2">
                 <span>Less</span>
                 <div className="w-3 h-3 bg-slate-100 rounded-sm" />
-                <div className="w-3 h-3 bg-emerald-200 rounded-sm" />
-                <div className="w-3 h-3 bg-emerald-400 rounded-sm" />
-                <div className="w-3 h-3 bg-emerald-500 rounded-sm" />
-                <div className="w-3 h-3 bg-emerald-600 rounded-sm" />
+                <div className="w-3 h-3 bg-purple-200 rounded-sm" />
+                <div className="w-3 h-3 bg-purple-400 rounded-sm" />
+                <div className="w-3 h-3 bg-purple-500 rounded-sm" />
+                <div className="w-3 h-3 bg-purple-600 rounded-sm" />
                 <span>More</span>
               </div>
             </div>
@@ -694,7 +700,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
               <Calendar className="w-6 h-6 text-purple-600 dark:text-purple-400" />
               <h3 className="text-xl font-black text-[#1e1535] dark:text-white capitalize">
                 {activePlatform === 'github'
-                  ? `Recent Activity & Commit Log (${currentActivitiesList.length})`
+                  ? `Recent GitHub Activity (${currentActivitiesList.length})`
                   : `Recent Accepted Submissions Log (${currentActivitiesList.length})`}
               </h3>
             </div>
@@ -705,7 +711,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
               <thead>
                 <tr className="border-b border-[#e9dff7] dark:border-[#272248] text-[11px] font-black text-[#7e7496] dark:text-purple-300/70 uppercase tracking-wider">
                   <th className="py-3 px-4">
-                    {activePlatform === 'github' ? 'ACTIVITY / COMMIT TITLE' : 'TITLE'}
+                    {activePlatform === 'github' ? 'REPOSITORY / COMMIT TITLE' : 'TITLE'}
                   </th>
 
                   {/* OMIT DIFFICULTY COLUMN FOR GITHUB */}
@@ -722,7 +728,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
                 {currentActivitiesList.length === 0 ? (
                   <tr>
                     <td colSpan={activePlatform === 'github' ? 2 : 3} className="py-8 text-center text-[#8a7f9e] font-semibold">
-                      No recent accepted submissions found for {activePlatform}.
+                      No recent {activePlatform === 'github' ? 'GitHub activity' : 'accepted submissions'} found for this student.
                     </td>
                   </tr>
                 ) : (
