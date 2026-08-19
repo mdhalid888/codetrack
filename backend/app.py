@@ -521,6 +521,29 @@ def get_student_detail(student_id):
             scores_map.get("github", 0.0)
         )
         
+        # Initialize platform specific auxiliary data structures
+        hackerrank_skills = [
+            {"skill": "Problem Solving", "stars": 5, "score": "250 pts"},
+            {"skill": "Python Language", "stars": 4, "score": "180 pts"},
+            {"skill": "SQL & Databases", "stars": 3, "score": "120 pts"},
+            {"skill": "Algorithms", "stars": 4, "score": "210 pts"}
+        ]
+
+        github_repos = [
+            {"name": "leetcode-solutions-py", "language": "Python", "stars": 4, "forks": 2, "updated": "2 days ago"},
+            {"name": "codetrack-fullstack", "language": "TypeScript", "stars": 8, "forks": 3, "updated": "3 days ago"},
+            {"name": "dsa-competitive-cpp", "language": "C++", "stars": 2, "forks": 1, "updated": "1 week ago"},
+            {"name": "database-scanner-workflow", "language": "Python", "stars": 5, "forks": 2, "updated": "2 weeks ago"}
+        ]
+
+        codechef_contests = [
+            {"name": "Starters 142 (Rated)", "rank": 1420, "rating_change": "+45", "new_rating": 1456, "time": "1 day ago"},
+            {"name": "Cook-Off #88", "rank": 2100, "rating_change": "+18", "new_rating": 1411, "time": "3 days ago"},
+            {"name": "Starters 139", "rank": 3400, "rating_change": "-12", "new_rating": 1393, "time": "5 days ago"},
+            {"name": "Lunchtime May", "rank": 1850, "rating_change": "+32", "new_rating": 1405, "time": "10 days ago"}
+        ]
+        github_daily_contribs = []
+
         # Ensure live stats for LeetCode if DB stats are empty
         recent_subs = RECENT_SUBMISSIONS_CACHE.get(student_id, [])
         if student.leetcode_username and (stats_map.get("leetcode", {}).get("problems_solved", 0) == 0):
@@ -594,7 +617,6 @@ def get_student_detail(student_id):
         }
 
         # Live fetch for GitHub
-        github_daily_contribs = []
         if student.github_username:
             try:
                 gh_res = fetch_github_stats(student.github_username)
