@@ -185,13 +185,20 @@ def init_db():
             
             # Sync existing student data to MongoDB Atlas if connected (non-destructive)
             if mongo_db is not None:
+                try:
+                    mongo_db.students.create_index([("department", 1), ("year", 1)])
+                    mongo_db.students.create_index([("register_number", 1)])
+                    mongo_db.students.create_index([("leetcode_username", 1)])
+                except Exception as idx_err:
+                    print(f"MongoDB index creation notice: {idx_err}")
+
                 all_students = db_session.query(Student).all()
                 for st in all_students:
                     d = st.to_dict()
                     d["_id"] = st.id
                     mongo_db.students.replace_one({"_id": st.id}, d, upsert=True)
             db_session.close()
-            print("Successfully verified student data in MongoDB Atlas!")
+            print("Successfully verified student data and ensured compound indexes in MongoDB Atlas!")
         except Exception as err:
             print(f"MongoDB Atlas sync warning: {err}")
 
