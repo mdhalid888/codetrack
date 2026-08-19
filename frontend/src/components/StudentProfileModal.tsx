@@ -216,24 +216,20 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
         return "bg-slate-100 dark:bg-slate-800/60";
       }
 
-      let count = 0;
-      for (const ts of calendarTimestamps) {
-        if (Math.abs(ts - daySeconds) < 43200) {
-          count += submissionCalendar[ts] || 1;
+      // REAL LEETCODE SUBMISSION CALENDAR PARSING
+      if (activePlatform === 'leetcode' || activePlatform === 'allrounder') {
+        let count = 0;
+        for (const ts of calendarTimestamps) {
+          if (Math.abs(ts - daySeconds) < 43200) {
+            count += Number(submissionCalendar[ts] || 0);
+          }
         }
-      }
 
-      if (count > 10) return "bg-emerald-600 dark:bg-emerald-500";
-      if (count > 5) return "bg-emerald-500 dark:bg-emerald-600/80";
-      if (count > 2) return "bg-emerald-400 dark:bg-emerald-700/60";
-      if (count > 0) return "bg-emerald-300 dark:bg-emerald-900/60";
-      
-      if (totalSolved > 0 && calendarTimestamps.length === 0) {
-        const val = (weekIdx * 7 + dayIdx * 13 + totalSolved) % 17;
-        if (val > 14) return "bg-emerald-600 dark:bg-emerald-500";
-        if (val > 10) return "bg-emerald-500 dark:bg-emerald-600/80";
-        if (val > 6) return "bg-emerald-400 dark:bg-emerald-700/60";
-        if (val > 3) return "bg-emerald-200 dark:bg-emerald-900/40";
+        if (count > 10) return "bg-emerald-600 dark:bg-emerald-500";
+        if (count > 5) return "bg-emerald-500 dark:bg-emerald-600/80";
+        if (count > 2) return "bg-emerald-400 dark:bg-emerald-700/60";
+        if (count > 0) return "bg-emerald-300 dark:bg-emerald-900/60";
+        return "bg-slate-100 dark:bg-slate-800/60";
       }
 
       return "bg-slate-100 dark:bg-slate-800/60";

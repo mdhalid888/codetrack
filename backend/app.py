@@ -544,9 +544,9 @@ def get_student_detail(student_id):
         ]
         github_daily_contribs = []
 
-        # Ensure live stats for LeetCode if DB stats are empty
+        # Ensure live stats for LeetCode
         recent_subs = RECENT_SUBMISSIONS_CACHE.get(student_id, [])
-        if student.leetcode_username and (stats_map.get("leetcode", {}).get("problems_solved", 0) == 0):
+        if student.leetcode_username:
             try:
                 lc_res = fetch_leetcode_stats(student.leetcode_username)
                 if lc_res.get("status") == "connected":
@@ -565,8 +565,8 @@ def get_student_detail(student_id):
                     if lc_res.get("recent_submissions"):
                         recent_subs = lc_res.get("recent_submissions")
                         RECENT_SUBMISSIONS_CACHE[student_id] = recent_subs
-            except Exception:
-                pass
+            except Exception as err:
+                print(f"LC Live fetch notice for {student.leetcode_username}: {err}")
 
         # Build 20 platform activities for each platform
         platform_activities = {
