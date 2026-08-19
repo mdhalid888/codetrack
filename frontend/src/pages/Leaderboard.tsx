@@ -36,8 +36,19 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
     const userDept = currentUser?.department || '';
 
     getLeaderboard(p, dept, yr, 'All', q, role, userDept, sort)
-      .then(res => setLeaderboard(res.data))
-      .catch(err => console.error(err))
+      .then(res => {
+        if (res && Array.isArray((res as any).data)) {
+          setLeaderboard((res as any).data);
+        } else if (Array.isArray(res)) {
+          setLeaderboard(res);
+        } else {
+          setLeaderboard([]);
+        }
+      })
+      .catch(err => {
+        console.error("Leaderboard fetch error:", err);
+        setLeaderboard([]);
+      })
       .finally(() => setLoading(false));
   };
 

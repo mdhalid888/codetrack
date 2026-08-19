@@ -794,12 +794,15 @@ def get_leaderboard():
     db = get_db()
     try:
         query = db.query(Student)
-        if dept_filter != "All":
-            query = query.filter(Student.department == dept_filter)
-        if year_filter != "All":
-            query = query.filter(Student.year == int(year_filter))
-        if section_filter != "All":
-            query = query.filter(Student.section == section_filter)
+        if dept_filter and dept_filter.strip().lower() not in ["all", "all departments", "all dept"]:
+            query = query.filter(Student.department.ilike(dept_filter.strip()))
+        if year_filter and year_filter.strip().lower() not in ["all", "all years (1st-4th)", "all years"]:
+            try:
+                query = query.filter(Student.year == int(year_filter.strip()))
+            except Exception:
+                pass
+        if section_filter and section_filter.strip().lower() not in ["all", "all sections"]:
+            query = query.filter(Student.section == section_filter.strip())
         if search_query:
             query = query.filter(
                 (Student.name.ilike(f"%{search_query}%")) |
