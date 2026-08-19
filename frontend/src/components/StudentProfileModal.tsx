@@ -8,6 +8,7 @@ import { LeetCodeLogo, CodeChefLogo, HackerRankLogo, GitHubLogo } from './Platfo
 
 interface StudentProfileModalProps {
   studentId: number | null;
+  initialPlatform?: PlatformType;
   onClose: () => void;
 }
 
@@ -34,9 +35,15 @@ class ModalErrorBoundary extends React.Component<{ children: React.ReactNode }, 
   }
 }
 
-export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studentId, onClose }) => {
+export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studentId, initialPlatform, onClose }) => {
   const [data, setData] = useState<any>(null);
-  const [activePlatform, setActivePlatform] = useState<PlatformType>('leetcode');
+  const [activePlatform, setActivePlatform] = useState<PlatformType>(initialPlatform || 'leetcode');
+
+  useEffect(() => {
+    if (initialPlatform) {
+      setActivePlatform(initialPlatform);
+    }
+  }, [initialPlatform, studentId]);
 
   useEffect(() => {
     if (!studentId) return;

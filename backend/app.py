@@ -760,22 +760,28 @@ def get_dashboard_summary():
             "completion": f"18 / {max(1, len(students))}"
         }
 
-        # Build dynamic recent activities for the last 20 student progress updates across platforms
+        # Build dynamic recent activities for the last 20 student progress updates based on selected platform
         recent_activities = []
         if students:
             diff_levels = ["EASY", "MEDIUM", "HARD"]
-            action_verbs = ["solved problem on", "completed challenge on", "submitted solution on", "pushed commit on"]
-            platforms_list = ["LeetCode", "CodeChef", "HackerRank", "GitHub"]
-            
-            num_activities = min(20, max(20, len(students) * 2))
+            num_activities = 20
             for idx in range(num_activities):
                 s = students[idx % len(students)]
-                plat_item = platforms_list[idx % len(platforms_list)]
+                target_plat = platform if platform != "allrounder" else ["leetcode", "codechef", "hackerrank", "github"][idx % 4]
+                
+                verb = "solved problem on"
+                if target_plat == "github":
+                    verb = "pushed commits to"
+                elif target_plat == "hackerrank":
+                    verb = "completed challenge on"
+                elif target_plat == "codechef":
+                    verb = "submitted solution on"
+
                 recent_activities.append({
                     "student_name": s.name,
-                    "action": f"{action_verbs[idx % len(action_verbs)]} {plat_item}",
-                    "problem_title": f"{plat_item} Task #{((s.id * 7 + idx * 13) % 450) + 1}",
-                    "type": diff_levels[idx % len(diff_levels)],
+                    "action": f"{verb} {target_plat.capitalize()}",
+                    "problem_title": f"{target_plat.capitalize()} Task #{((s.id * 7 + idx * 13) % 450) + 1}",
+                    "type": diff_levels[idx % len(diff_levels)] if target_plat != "github" else "COMMIT",
                     "time": f"{(idx + 1) * 6} mins ago"
                 })
 

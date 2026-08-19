@@ -611,6 +611,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
       <StudentProfileModal
         studentId={selectedStudentId}
+        initialPlatform={currentPlatform}
         onClose={() => setSelectedStudentId(null)}
       />
 

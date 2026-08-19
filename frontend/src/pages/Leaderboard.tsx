@@ -376,6 +376,7 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
 
       <StudentProfileModal
         studentId={selectedStudentId}
+        initialPlatform={currentPlatform}
         onClose={() => setSelectedStudentId(null)}
       />
 
