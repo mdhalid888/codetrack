@@ -84,6 +84,28 @@ def fetch_codechef_stats(username: str) -> dict:
 
             contest_history = []
             contest_dates = {}
+
+            # 1. Parse userDailySubmissionsStats (Exact submission heatmap stats from CodeChef JS)
+            match_stats = re.search(r'var\s+userDailySubmissionsStats\s*=\s*(\[.*?\]);', response.text)
+            if match_stats:
+                try:
+                    import json
+                    stats_arr = json.loads(match_stats.group(1))
+                    for item in stats_arr:
+                        d_str = item.get("date")  # e.g. "2026-8-7"
+                        val = item.get("value", 0)
+                        if d_str and val > 0:
+                            parts = d_str.split("-")
+                            if len(parts) == 3:
+                                yyyy = parts[0]
+                                mm = f"{int(parts[1]):02d}"
+                                dd = f"{int(parts[2]):02d}"
+                                formatted_date = f"{yyyy}-{mm}-{dd}"
+                                contest_dates[formatted_date] = val
+                except Exception as err:
+                    print(f"userDailySubmissionsStats parse notice: {err}")
+
+            # 2. Parse Drupal Settings for contest rating history
             match_settings = re.search(r'jQuery\.extend\(Drupal\.settings,\s*(\{.*?\})\);', response.text)
             if match_settings:
                 try:
@@ -96,7 +118,8 @@ def fetch_codechef_stats(username: str) -> dict:
                         dy = item.get("getday")
                         if yr and mo and dy:
                             date_str = f"{yr}-{int(mo):02d}-{int(dy):02d}"
-                            contest_dates[date_str] = contest_dates.get(date_str, 0) + 1
+                            if date_str not in contest_dates:
+                                contest_dates[date_str] = 1
                         contest_history.append({
                             "name": item.get("name") or item.get("code"),
                             "rank": item.get("rank"),

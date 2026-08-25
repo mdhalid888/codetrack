@@ -28,7 +28,30 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
 
   const [leaderboard, setLeaderboard] = useState<LeaderboardItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [selectedStudentId, setSelectedStudentId] = useState<number | null>(null);
+  const [selectedStudentId, setSelectedStudentId] = useState<number | null>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('codetrack_selected_student');
+      if (saved && !isNaN(Number(saved))) {
+        return Number(saved);
+      }
+    }
+    return null;
+  });
+
+  const handleSelectStudent = (id: number | null) => {
+    setSelectedStudentId(id);
+    if (id !== null) {
+      localStorage.setItem('codetrack_selected_student', id.toString());
+      if (typeof window !== 'undefined') {
+        window.history.replaceState(null, '', `#leaderboard?student=${id}`);
+      }
+    } else {
+      localStorage.removeItem('codetrack_selected_student');
+      if (typeof window !== 'undefined') {
+        window.history.replaceState(null, '', '#leaderboard');
+      }
+    }
+  };
 
   const fetchLeaderboardData = (p: PlatformType, dept: string, yr: string, q: string, sort: string) => {
     setLoading(true);
@@ -234,7 +257,7 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
                 {leaderboard.map((item) => (
                   <tr
                     key={item.id}
-                    onClick={() => setSelectedStudentId(item.id)}
+                    onClick={() => handleSelectStudent(item.id)}
                     className="hover:bg-purple-50/60 dark:hover:bg-purple-950/30 transition cursor-pointer"
                   >
                     <td className="py-4 px-4 text-center font-bold">
@@ -377,7 +400,7 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
       <StudentProfileModal
         studentId={selectedStudentId}
         initialPlatform={currentPlatform}
-        onClose={() => setSelectedStudentId(null)}
+        onClose={() => handleSelectStudent(null)}
       />
 
     </div>

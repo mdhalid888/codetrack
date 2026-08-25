@@ -216,7 +216,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
         return "bg-slate-100 dark:bg-slate-800/60";
       }
 
-      // 2. CODECHEF HEATMAP (AUTHENTIC DATE MATCHING & SOLVED FALLBACK)
+      // 2. CODECHEF HEATMAP (100% AUTHENTIC USER DAILY SUBMISSIONS SCRAPED MATCHING)
       if (activePlatform === 'codechef') {
         const yyyy = dObj.getUTCFullYear();
         const mm = String(dObj.getUTCMonth() + 1).padStart(2, '0');
@@ -224,7 +224,15 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
         const utcDateStr = `${yyyy}-${mm}-${dd}`;
         const localDateStr = dObj.toISOString().split('T')[0];
 
-        let cnt = Number(codechefDates[utcDateStr] || codechefDates[localDateStr] || 0);
+        // Format single-digit month/day strings (e.g. "2026-8-7")
+        const singleDigitStr = `${yyyy}-${dObj.getUTCMonth() + 1}-${dObj.getUTCDate()}`;
+
+        let cnt = Number(
+          codechefDates[utcDateStr] || 
+          codechefDates[localDateStr] || 
+          codechefDates[singleDigitStr] || 
+          0
+        );
 
         if (cnt === 0 && codechefContests.length > 0) {
           for (const c of codechefContests) {
@@ -234,19 +242,8 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
           }
         }
 
-        // If student has CodeChef solved count > 0 but no explicit date keys mapped, render active solved tiles
-        if (cnt === 0 && ccSolved > 0) {
-          const dayHash = Math.abs((weekIdx * 7 + dayIdx * 17 + studentIdentity.id * 11) % 365);
-          if (dayHash < Math.min(220, ccSolved * 4)) {
-            const val = (weekIdx * 7 + dayIdx * 13 + ccSolved) % 9;
-            if (val > 4) {
-              cnt = 1 + (val % 3);
-            }
-          }
-        }
-
-        if (cnt > 3) return "bg-amber-600 dark:bg-amber-500";
-        if (cnt > 1) return "bg-amber-500 dark:bg-amber-600/80";
+        if (cnt > 10) return "bg-amber-600 dark:bg-amber-500";
+        if (cnt > 3) return "bg-amber-500 dark:bg-amber-600/80";
         if (cnt > 0) return "bg-amber-400 dark:bg-amber-700/60";
         return "bg-slate-100 dark:bg-slate-800/60";
       }

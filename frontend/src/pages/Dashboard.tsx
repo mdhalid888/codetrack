@@ -31,7 +31,30 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   const [summary, setSummary] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [selectedStudentId, setSelectedStudentId] = useState<number | null>(null);
+  const [selectedStudentId, setSelectedStudentId] = useState<number | null>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('codetrack_selected_student');
+      if (saved && !isNaN(Number(saved))) {
+        return Number(saved);
+      }
+    }
+    return null;
+  });
+
+  const handleSelectStudent = (id: number | null) => {
+    setSelectedStudentId(id);
+    if (id !== null) {
+      localStorage.setItem('codetrack_selected_student', id.toString());
+      if (typeof window !== 'undefined') {
+        window.history.replaceState(null, '', `#dashboard?student=${id}`);
+      }
+    } else {
+      localStorage.removeItem('codetrack_selected_student');
+      if (typeof window !== 'undefined') {
+        window.history.replaceState(null, '', '#dashboard');
+      }
+    }
+  };
 
   // Notice Board State
   const [notices, setNotices] = useState<any[]>([]);
@@ -420,9 +443,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   </thead>
                   <tbody className="divide-y divide-[#f0e8fa] dark:divide-[#252044]">
                     {summary?.top_5_solvers?.map((s: any) => (
-                      <tr
+                  <tr
                         key={s.id}
-                        onClick={() => setSelectedStudentId(s.id)}
+                        onClick={() => handleSelectStudent(s.id)}
                         className="hover:bg-purple-50/60 dark:hover:bg-purple-950/30 transition cursor-pointer"
                       >
                         <td className="py-4 px-4 text-center font-bold">
@@ -612,7 +635,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
       <StudentProfileModal
         studentId={selectedStudentId}
         initialPlatform={currentPlatform}
-        onClose={() => setSelectedStudentId(null)}
+        onClose={() => handleSelectStudent(null)}
       />
 
       {/* 🗓️ 7-DAY TASK HISTORY MODAL */}
