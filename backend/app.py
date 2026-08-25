@@ -616,6 +616,28 @@ def get_student_detail(student_id):
             ]
         }
 
+        # Live fetch for CodeChef
+        codechef_dates = {}
+        if student.codechef_username:
+            try:
+                cc_res = fetch_codechef_stats(student.codechef_username)
+                if cc_res.get("status") == "connected":
+                    stats_map["codechef"] = {
+                        "platform": "codechef",
+                        "problems_solved": cc_res.get("problems_solved", 0),
+                        "rating": cc_res.get("rating", 0),
+                        "highest_rating": cc_res.get("highest_rating", 0),
+                        "stars": cc_res.get("stars", "1★"),
+                        "contests_count": cc_res.get("contests_count", 0),
+                        "normalized_score": calculate_platform_normalized_score("codechef", cc_res)
+                    }
+                    if cc_res.get("contest_history"):
+                        codechef_contests = cc_res.get("contest_history")
+                    if cc_res.get("contest_dates"):
+                        codechef_dates = cc_res.get("contest_dates")
+            except Exception as err:
+                print(f"CodeChef Live fetch notice for {student.codechef_username}: {err}")
+
         # Live fetch for GitHub
         if student.github_username:
             try:
@@ -649,6 +671,7 @@ def get_student_detail(student_id):
         s_dict["hackerrank_skills"] = hackerrank_skills
         s_dict["github_repos"] = github_repos
         s_dict["codechef_contests"] = codechef_contests
+        s_dict["codechef_dates"] = codechef_dates
         s_dict["github_daily_contribs"] = github_daily_contribs
 
         return jsonify(s_dict), 200

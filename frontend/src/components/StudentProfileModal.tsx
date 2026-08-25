@@ -185,17 +185,27 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
   const codechefContests = (data && data.codechef_contests) ? data.codechef_contests : [];
   const githubDailyContribs = (data && data.github_daily_contribs) ? data.github_daily_contribs : [];
 
-  // Heatmap Calendar Grid
+  // Heatmap Calendar Grid with Month Breakdown
+  const codechefDates = (data && data.codechef_dates) ? data.codechef_dates : {};
   const submissionCalendar = (lc && lc.submission_calendar) ? lc.submission_calendar : {};
   const calendarTimestamps = Object.keys(submissionCalendar).map(Number).sort((a, b) => a - b);
   const todaySeconds = Math.floor(Date.now() / 1000);
   const oneYearAgoSeconds = todaySeconds - (52 * 7 * 86400);
 
-  const heatmapWeeks = Array.from({ length: 52 }, (_, weekIdx) => {
-    return Array.from({ length: 7 }, (_, dayIdx) => {
-      const daySeconds = oneYearAgoSeconds + (weekIdx * 7 + dayIdx) * 86400;
-      
-      // REAL GITHUB CONTRIBUTION CALENDAR PARSING
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+  const weekData = Array.from({ length: 52 }, (_, weekIdx) => {
+    const sundaySeconds = oneYearAgoSeconds + (weekIdx * 7) * 86400;
+    const dateObj = new Date(sundaySeconds * 1000);
+    const monthLabel = monthNames[dateObj.getMonth()];
+    const isNewMonth = weekIdx === 0 || dateObj.getDate() <= 7;
+
+    const days = Array.from({ length: 7 }, (_, dayIdx) => {
+      const daySeconds = sundaySeconds + dayIdx * 86400;
+      const dObj = new Date(daySeconds * 1000);
+      const dStr = dObj.toISOString().split('T')[0];
+
+      // 1. GITHUB HEATMAP
       if (activePlatform === 'github' && githubDailyContribs.length > 0) {
         const itemIdx = weekIdx * 7 + dayIdx;
         const cItem = githubDailyContribs[itemIdx] || {};
@@ -207,16 +217,17 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
         return "bg-slate-100 dark:bg-slate-800/60";
       }
 
+      // 2. CODECHEF HEATMAP (AUTHENTIC DATE MATCHING - NO FAKE PATTERNS)
       if (activePlatform === 'codechef') {
-        const cVal = (weekIdx * 7 + dayIdx * 11 + ccSolved) % 15;
-        if (cVal > 12) return "bg-amber-600 dark:bg-amber-500";
-        if (cVal > 9) return "bg-amber-500 dark:bg-amber-600/80";
-        if (cVal > 6) return "bg-amber-400 dark:bg-amber-700/60";
-        if (cVal > 3) return "bg-amber-200 dark:bg-amber-900/40";
+        const cnt = Number(codechefDates[dStr] || 0);
+
+        if (cnt > 3) return "bg-amber-600 dark:bg-amber-500";
+        if (cnt > 1) return "bg-amber-500 dark:bg-amber-600/80";
+        if (cnt > 0) return "bg-amber-400 dark:bg-amber-700/60";
         return "bg-slate-100 dark:bg-slate-800/60";
       }
 
-      // REAL LEETCODE SUBMISSION CALENDAR PARSING
+      // 3. LEETCODE HEATMAP
       if (activePlatform === 'leetcode' || activePlatform === 'allrounder') {
         let count = 0;
         for (const ts of calendarTimestamps) {
@@ -234,6 +245,13 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
 
       return "bg-slate-100 dark:bg-slate-800/60";
     });
+
+    return {
+      weekIdx,
+      monthLabel: isNewMonth ? monthLabel : "",
+      isNewMonth,
+      days
+    };
   });
 
   const modalContent = (
@@ -668,10 +686,20 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
           </div>
 
           <div className="overflow-x-auto pb-2">
-            <div className="flex gap-1 min-w-[700px] items-center">
-              {heatmapWeeks.map((week, wIdx) => (
-                <div key={wIdx} className="flex flex-col gap-1">
-                  {week.map((cellClass, dIdx) => (
+            {/* MONTH HEADERS */}
+            <div className="flex gap-1 min-w-[750px] items-end mb-2.5 text-[10px] font-extrabold text-[#7e7496] dark:text-purple-300/70 font-mono">
+              {weekData.map((w, wIdx) => (
+                <div key={wIdx} className={`w-3 text-center ${w.isNewMonth && wIdx !== 0 ? 'ml-2' : ''}`}>
+                  {w.monthLabel}
+                </div>
+              ))}
+            </div>
+
+            {/* WEEK COLUMNS SEPARATED MONTH BY MONTH */}
+            <div className="flex gap-1 min-w-[750px] items-center">
+              {weekData.map((w, wIdx) => (
+                <div key={wIdx} className={`flex flex-col gap-1 ${w.isNewMonth && wIdx !== 0 ? 'ml-2' : ''}`}>
+                  {w.days.map((cellClass, dIdx) => (
                     <div
                       key={dIdx}
                       className={`w-3 h-3 rounded-sm ${cellClass} transition hover:scale-125 cursor-pointer`}
@@ -681,6 +709,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
                 </div>
               ))}
             </div>
+          </div>
             <div className="flex items-center justify-between text-xs text-[#7e7496] dark:text-purple-300/70 font-semibold pt-4">
               <span>Aug 2025 — Aug 2026</span>
               <div className="flex items-center gap-2">
@@ -691,7 +720,6 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
                 <div className="w-3 h-3 bg-purple-500 rounded-sm" />
                 <div className="w-3 h-3 bg-purple-600 rounded-sm" />
                 <span>More</span>
-              </div>
             </div>
           </div>
         </div>

@@ -74,13 +74,37 @@ def fetch_codechef_stats(username: str) -> dict:
                 if match:
                     problems_solved = int(match.group(1))
 
-            # Contests count
+            # Contests count & Drupal Settings parse for rating history and dates
             contests_count = 0
             contest_text = soup.find("div", class_="contest-participated-count")
             if contest_text:
                 match = re.search(r'\d+', contest_text.text)
                 if match:
                     contests_count = int(match.group())
+
+            contest_history = []
+            contest_dates = {}
+            match_settings = re.search(r'jQuery\.extend\(Drupal\.settings,\s*(\{.*?\})\);', response.text)
+            if match_settings:
+                try:
+                    import json
+                    d_data = json.loads(match_settings.group(1))
+                    rating_data = d_data.get("date_versus_rating", {}).get("all", [])
+                    for item in rating_data:
+                        yr = item.get("getyear")
+                        mo = item.get("getmonth")
+                        dy = item.get("getday")
+                        if yr and mo and dy:
+                            date_str = f"{yr}-{int(mo):02d}-{int(dy):02d}"
+                            contest_dates[date_str] = contest_dates.get(date_str, 0) + 1
+                        contest_history.append({
+                            "name": item.get("name") or item.get("code"),
+                            "rank": item.get("rank"),
+                            "rating": item.get("rating"),
+                            "date": item.get("end_date")
+                        })
+                except Exception:
+                    pass
 
             return {
                 "status": "connected",
@@ -89,7 +113,9 @@ def fetch_codechef_stats(username: str) -> dict:
                 "highest_rating": max(highest_rating, rating),
                 "stars": stars,
                 "problems_solved": problems_solved,
-                "contests_count": contests_count
+                "contests_count": max(contests_count, len(contest_history)),
+                "contest_history": contest_history,
+                "contest_dates": contest_dates
             }
         elif response.status_code == 404:
             return {
