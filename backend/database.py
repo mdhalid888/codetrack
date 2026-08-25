@@ -171,7 +171,7 @@ def init_db():
                         (26, 'Kirthik G', '721023205032', 'IT', 4, 'A', 'Kirthik03', 'Kirthik03', 'Kirthik03', 'Kirthik03'),
                         (27, 'RAJESH VK', '721023205049', 'IT', 4, 'A', 'rajesh-vk', 'rajesh-vk', 'rajesh-vk', 'rajesh-vk'),
                         (28, 'VENKATESWARAN A', '721023235062', 'IT', 4, 'A', 'VENKATESWARAN_26', 'VENKATESWARAN_26', 'VENKATESWARAN_26', 'VENKATESWARAN_26'),
-                        (29, 'Mohamed Halid', '721023205039', 'IT', 4, 'A', 'mohamedhalid', 'mohamedhalid', 'mohamedhalid', 'mohamedhalid')
+                        (29, 'Mohamed Halid', '721023205039', 'IT', 4, 'A', 'mohamedhalid', 'halid1146', 'mohamedhalid', 'mdhalid888')
                     ]
                     for item in ROSTER_SEED:
                         st = Student(
