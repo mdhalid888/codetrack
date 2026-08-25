@@ -11,11 +11,43 @@ import { syncStudents } from './services/api';
 import type { PlatformType, AdminUser } from './types';
 
 export const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<string>('dashboard');
-  const [globalPlatform, setGlobalPlatform] = useState<PlatformType>('leetcode');
+  // Page Tab State preserved across refresh via URL Hash & LocalStorage
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash.replace('#', '').trim().toLowerCase();
+      if (hash && ['dashboard', 'leaderboard', 'compare', 'attendance', 'scanner'].includes(hash)) {
+        return hash;
+      }
+      const savedTab = localStorage.getItem('codetrack_active_tab');
+      if (savedTab && ['dashboard', 'leaderboard', 'compare', 'attendance', 'scanner'].includes(savedTab)) {
+        return savedTab;
+      }
+    }
+    return 'dashboard';
+  });
+
+  // Global Platform State preserved across refresh via LocalStorage
+  const [globalPlatform, setGlobalPlatform] = useState<PlatformType>(() => {
+    if (typeof window !== 'undefined') {
+      const savedPlat = localStorage.getItem('codetrack_global_platform') as PlatformType;
+      if (savedPlat && ['leetcode', 'codechef', 'hackerrank', 'github', 'allrounder'].includes(savedPlat)) {
+        return savedPlat;
+      }
+    }
+    return 'leetcode';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('codetrack_active_tab', activeTab);
+    window.location.hash = activeTab;
+  }, [activeTab]);
+
+  useEffect(() => {
+    localStorage.setItem('codetrack_global_platform', globalPlatform);
+  }, [globalPlatform]);
+
   const [refreshKey, setRefreshKey] = useState<number>(0);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
-
   const [isLoginOpen, setIsLoginOpen] = useState<boolean>(false);
   const [currentUser, setCurrentUser] = useState<AdminUser | null>(null);
 
@@ -23,16 +55,6 @@ export const App: React.FC = () => {
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     return (localStorage.getItem('codetrack_theme') as 'dark' | 'light') || 'light';
   });
-
-  useEffect(() => {
-    const root = document.documentElement;
-    if (theme === 'dark') {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
-    }
-    localStorage.setItem('codetrack_theme', theme);
-  }, [theme]);
 
   const handleToggleTheme = () => {
     setTheme(prev => prev === 'dark' ? 'light' : 'dark');

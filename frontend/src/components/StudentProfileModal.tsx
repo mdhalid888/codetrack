@@ -203,7 +203,6 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
     const days = Array.from({ length: 7 }, (_, dayIdx) => {
       const daySeconds = sundaySeconds + dayIdx * 86400;
       const dObj = new Date(daySeconds * 1000);
-      const dStr = dObj.toISOString().split('T')[0];
 
       // 1. GITHUB HEATMAP
       if (activePlatform === 'github' && githubDailyContribs.length > 0) {
@@ -219,7 +218,21 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
 
       // 2. CODECHEF HEATMAP (AUTHENTIC DATE MATCHING - NO FAKE PATTERNS)
       if (activePlatform === 'codechef') {
-        const cnt = Number(codechefDates[dStr] || 0);
+        const yyyy = dObj.getUTCFullYear();
+        const mm = String(dObj.getUTCMonth() + 1).padStart(2, '0');
+        const dd = String(dObj.getUTCDate()).padStart(2, '0');
+        const utcDateStr = `${yyyy}-${mm}-${dd}`;
+        const localDateStr = dObj.toISOString().split('T')[0];
+
+        let cnt = Number(codechefDates[utcDateStr] || codechefDates[localDateStr] || 0);
+
+        if (cnt === 0 && codechefContests.length > 0) {
+          for (const c of codechefContests) {
+            if (c.date && (c.date.startsWith(utcDateStr) || c.date.startsWith(localDateStr))) {
+              cnt += 1;
+            }
+          }
+        }
 
         if (cnt > 3) return "bg-amber-600 dark:bg-amber-500";
         if (cnt > 1) return "bg-amber-500 dark:bg-amber-600/80";
