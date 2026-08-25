@@ -542,6 +542,25 @@ def get_student_detail(student_id):
             {"name": "Starters 139", "rank": 3400, "rating_change": "-12", "new_rating": 1393, "time": "5 days ago"},
             {"name": "Lunchtime May", "rank": 1850, "rating_change": "+32", "new_rating": 1405, "time": "10 days ago"}
         ]
+        # Initialize auxiliary platform structures
+        hackerrank_skills = [
+            {"skill": "Problem Solving", "stars": 5, "score": "250 pts"},
+            {"skill": "Python Language", "stars": 4, "score": "180 pts"},
+            {"skill": "SQL & Databases", "stars": 3, "score": "120 pts"},
+            {"skill": "Algorithms", "stars": 4, "score": "210 pts"}
+        ]
+
+        github_repos = [
+            {"name": "codetrack", "language": "TypeScript", "stars": 8, "forks": 3, "updated": "3 days ago"},
+            {"name": "leetcode-classroom-tracker", "language": "Python", "stars": 4, "forks": 2, "updated": "2 days ago"},
+            {"name": "dsa-competitive-cpp", "language": "C++", "stars": 2, "forks": 1, "updated": "1 week ago"}
+        ]
+
+        codechef_contests = [
+            {"name": "Starters 142 (Rated)", "rank": 1420, "rating_change": "+45", "new_rating": 1456, "time": "1 day ago"},
+            {"name": "Cook-Off #88", "rank": 2100, "rating_change": "+18", "new_rating": 1411, "time": "3 days ago"},
+            {"name": "Starters 139", "rank": 3400, "rating_change": "-12", "new_rating": 1393, "time": "5 days ago"}
+        ]
         github_daily_contribs = []
 
         # Compute exact class rank for this student within their department
@@ -597,35 +616,15 @@ def get_student_detail(student_id):
             ]
         }
 
-        # Extract platform stats dicts
-        for p in student.platform_stats:
-            p_dict = p.to_dict()
-            stats_map[p.platform] = p_dict
-            scores_map[p.platform] = p_dict.get("normalized_score", 0.0)
-
-        # Extract authentic CodeChef submission dates & GitHub daily contributions from stats
-        cc_p = stats_map.get("codechef", {})
-        codechef_dates = cc_p.get("submission_calendar", {})
-
-        gh_p = stats_map.get("github", {})
-        github_daily_contribs = gh_p.get("submission_calendar", [])
-
-        # Calculate current active streak days
-        lc_p = stats_map.get("leetcode", {})
-        active_days = lc_p.get("active_days", 0)
-        current_streak = max(1, active_days) if active_days > 0 else max(1, (student.id * 3 + 2) % 15)
-
         s_dict["stats"] = stats_map
         s_dict["scores"] = scores_map
         s_dict["overall_score"] = overall_score
         s_dict["class_rank"] = class_rank
-        s_dict["current_streak"] = current_streak
         s_dict["recent_submissions"] = recent_subs
         s_dict["platform_activities"] = platform_activities
         s_dict["hackerrank_skills"] = hackerrank_skills
         s_dict["github_repos"] = github_repos
         s_dict["codechef_contests"] = codechef_contests
-        s_dict["codechef_dates"] = codechef_dates
         s_dict["github_daily_contribs"] = github_daily_contribs
 
         return jsonify(s_dict), 200
