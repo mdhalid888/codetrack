@@ -39,12 +39,29 @@ export const App: React.FC = () => {
 
   useEffect(() => {
     localStorage.setItem('codetrack_active_tab', activeTab);
-    window.location.hash = activeTab;
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(null, '', `#${activeTab}`);
+    }
   }, [activeTab]);
 
   useEffect(() => {
     localStorage.setItem('codetrack_global_platform', globalPlatform);
   }, [globalPlatform]);
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace('#', '').trim().toLowerCase();
+      if (hash && ['dashboard', 'leaderboard', 'compare', 'attendance', 'scanner'].includes(hash)) {
+        setActiveTab(hash);
+      }
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    window.addEventListener('popstate', handleHashChange);
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange);
+      window.removeEventListener('popstate', handleHashChange);
+    };
+  }, []);
 
   const [refreshKey, setRefreshKey] = useState<number>(0);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
