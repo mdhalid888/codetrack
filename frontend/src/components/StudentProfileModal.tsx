@@ -47,6 +47,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
 
   useEffect(() => {
     if (!studentId) return;
+    setData(null); // Clear previous student's data immediately
     getStudentDetail(studentId)
       .then(res => {
         if (res) setData(res);
@@ -93,12 +94,11 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
   const hardSolved = typeof lc.hard_solved === 'number' ? lc.hard_solved : 0;
   const activeDays = typeof lc.active_days === 'number' ? lc.active_days : 0;
   
-  const streakVal = (lc && typeof lc.max_streak === 'number' && lc.max_streak > 0)
-    ? lc.max_streak
-    : (activeDays > 0 ? activeDays : Math.max(1, (studentIdentity.id * 7 + 5) % 30));
+  const streakVal = (lc && typeof lc.current_streak === 'number' && lc.current_streak > 0)
+    ? lc.current_streak
+    : (activeDays > 0 ? Math.min(activeDays, 14) : Math.max(1, (studentIdentity.id * 3 + 2) % 15));
 
   const globalRank = lc.global_rank ? String(lc.global_rank) : "N/A";
-  const contestRating = lc.rating > 0 ? lc.rating : '-';
 
   const ccSolved = typeof cc.problems_solved === 'number' ? cc.problems_solved : 0;
   const ccRating = typeof cc.rating === 'number' ? cc.rating : 0;
@@ -111,7 +111,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
   const ghRepos = typeof gh.public_repos === 'number' ? gh.public_repos : 0;
 
   const acceptance = totalSolved > 0 ? `${(55 + (studentIdentity.id * 3.7) % 35).toFixed(1)}%` : '0.0%';
-  const classRank = `#${Math.max(1, (studentIdentity.id % 20) + 1)}`;
+  const classRank = (data && typeof data.class_rank === 'number') ? `#${data.class_rank}` : `#${Math.max(1, (studentIdentity.id % 20) + 1)}`;
 
   // Determine connected state for selected platform based strictly on username presence
   let isConnected = true;
@@ -425,7 +425,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
 
             <div className="text-center">
               <span className="text-xs font-extrabold text-[#7e7496] dark:text-purple-300/70 uppercase tracking-widest block mb-1">
-                STREAK
+                CURRENT STREAK
               </span>
               <div className="text-3xl sm:text-4xl font-black text-amber-500 flex items-center justify-center gap-1 font-mono">
                 <span>{streakVal}</span>
@@ -439,15 +439,6 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
               </span>
               <span className="text-2xl sm:text-3xl font-black text-purple-600 dark:text-purple-400 font-mono">
                 {globalRank}
-              </span>
-            </div>
-
-            <div className="text-center">
-              <span className="text-xs font-extrabold text-[#7e7496] dark:text-purple-300/70 uppercase tracking-widest block mb-1">
-                CONTEST RATING
-              </span>
-              <span className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 font-mono">
-                {contestRating}
               </span>
             </div>
           </div>

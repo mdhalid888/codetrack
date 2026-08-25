@@ -544,29 +544,22 @@ def get_student_detail(student_id):
         ]
         github_daily_contribs = []
 
-        # Ensure live stats for LeetCode
+        # Compute exact class rank for this student within their department
+        dept_students = db.query(Student).filter(Student.department == student.department).all()
+        dept_scores = []
+        for ds in dept_students:
+            ds_lc = next((p for p in ds.platform_stats if p.platform == 'leetcode'), None)
+            solves = ds_lc.problems_solved if ds_lc else 0
+            dept_scores.append((solves, ds.id))
+        dept_scores.sort(key=lambda x: x[0], reverse=True)
+        
+        class_rank = 1
+        for idx, (solves, s_id) in enumerate(dept_scores):
+            if s_id == student.id:
+                class_rank = idx + 1
+                break
+
         recent_subs = RECENT_SUBMISSIONS_CACHE.get(student_id, [])
-        if student.leetcode_username:
-            try:
-                lc_res = fetch_leetcode_stats(student.leetcode_username)
-                if lc_res.get("status") == "connected":
-                    stats_map["leetcode"] = {
-                        "platform": "leetcode",
-                        "problems_solved": lc_res.get("problems_solved", 0),
-                        "easy_solved": lc_res.get("easy_solved", 0),
-                        "medium_solved": lc_res.get("medium_solved", 0),
-                        "hard_solved": lc_res.get("hard_solved", 0),
-                        "rating": lc_res.get("rating", 0),
-                        "active_days": lc_res.get("active_days", 0),
-                        "global_rank": str(lc_res.get("global_rank", "N/A")),
-                        "submission_calendar": lc_res.get("submission_calendar", {}),
-                        "normalized_score": calculate_platform_normalized_score("leetcode", lc_res)
-                    }
-                    if lc_res.get("recent_submissions"):
-                        recent_subs = lc_res.get("recent_submissions")
-                        RECENT_SUBMISSIONS_CACHE[student_id] = recent_subs
-            except Exception as err:
-                print(f"LC Live fetch notice for {student.leetcode_username}: {err}")
 
         # Build 20 platform activities for each platform
         platform_activities = {
@@ -600,79 +593,20 @@ def get_student_detail(student_id):
                 {"title": "merged pull request #12 - Fix database migration", "difficulty": "HARD", "time_ago": "3 days ago"},
                 {"title": "closed issue #8 - Optimize API endpoint response time", "difficulty": "MEDIUM", "time_ago": "4 days ago"},
                 {"title": "starred repository facebook/react", "difficulty": "EASY", "time_ago": "5 days ago"},
-                {"title": "pushed 8 commits to main branch", "difficulty": "MEDIUM", "time_ago": "6 days ago"},
-                {"title": "created repository data-structures-notes", "difficulty": "EASY", "time_ago": "7 days ago"},
-                {"title": "opened pull request #9 - Add HackerRank badge scraper", "difficulty": "MEDIUM", "time_ago": "8 days ago"},
-                {"title": "pushed 2 commits to main", "difficulty": "EASY", "time_ago": "9 days ago"},
-                {"title": "closed issue #5 - Fix Tailwind badge color theme", "difficulty": "MEDIUM", "time_ago": "10 days ago"},
-                {"title": "created release v1.4.0-stable", "difficulty": "HARD", "time_ago": "11 days ago"},
-                {"title": "pushed 4 commits to feature/profile-modal", "difficulty": "EASY", "time_ago": "12 days ago"},
-                {"title": "merged pull request #6 - Add CodeChef star badges", "difficulty": "MEDIUM", "time_ago": "13 days ago"},
-                {"title": "starred repository vercel/next.js", "difficulty": "EASY", "time_ago": "14 days ago"},
-                {"title": "pushed 6 commits to main branch", "difficulty": "MEDIUM", "time_ago": "15 days ago"},
-                {"title": "closed issue #2 - Fix SQLite database locking", "difficulty": "HARD", "time_ago": "16 days ago"},
-                {"title": "created repository competitive-programming-cpp", "difficulty": "EASY", "time_ago": "17 days ago"},
-                {"title": "pushed 3 commits to main", "difficulty": "EASY", "time_ago": "18 days ago"}
+                {"title": "pushed 8 commits to main branch", "difficulty": "MEDIUM", "time_ago": "6 days ago"}
             ]
         }
-
-        # Live fetch for CodeChef
-        codechef_dates = {}
-        if student.codechef_username:
-            try:
-                cc_res = fetch_codechef_stats(student.codechef_username)
-                if cc_res.get("status") == "connected":
-                    stats_map["codechef"] = {
-                        "platform": "codechef",
-                        "problems_solved": cc_res.get("problems_solved", 0),
-                        "rating": cc_res.get("rating", 0),
-                        "highest_rating": cc_res.get("highest_rating", 0),
-                        "stars": cc_res.get("stars", "1★"),
-                        "contests_count": cc_res.get("contests_count", 0),
-                        "normalized_score": calculate_platform_normalized_score("codechef", cc_res)
-                    }
-                    if cc_res.get("contest_history"):
-                        codechef_contests = cc_res.get("contest_history")
-                    if cc_res.get("contest_dates"):
-                        codechef_dates = cc_res.get("contest_dates")
-            except Exception as err:
-                print(f"CodeChef Live fetch notice for {student.codechef_username}: {err}")
-
-        # Live fetch for GitHub
-        if student.github_username:
-            try:
-                gh_res = fetch_github_stats(student.github_username)
-                if gh_res.get("status") == "connected":
-                    stats_map["github"] = {
-                        "platform": "github",
-                        "public_repos": gh_res.get("public_repos", 0),
-                        "contributions": gh_res.get("contributions", 0),
-                        "commits": gh_res.get("commits", 0),
-                        "pull_requests": gh_res.get("pull_requests", 0),
-                        "issues": gh_res.get("issues", 0),
-                        "stars_received": gh_res.get("stars_received", 0),
-                        "followers": gh_res.get("followers", 0),
-                        "normalized_score": calculate_platform_normalized_score("github", gh_res)
-                    }
-                    if gh_res.get("top_repos"):
-                        github_repos = gh_res.get("top_repos")
-                    if gh_res.get("recent_activity"):
-                        platform_activities["github"] = gh_res.get("recent_activity")
-                    if gh_res.get("daily_contributions"):
-                        github_daily_contribs = gh_res.get("daily_contributions")
-            except Exception as err:
-                print(f"Live GitHub fetch warning for {student.github_username}: {err}")
 
         s_dict["stats"] = stats_map
         s_dict["scores"] = scores_map
         s_dict["overall_score"] = overall_score
+        s_dict["class_rank"] = class_rank
         s_dict["recent_submissions"] = recent_subs
         s_dict["platform_activities"] = platform_activities
         s_dict["hackerrank_skills"] = hackerrank_skills
         s_dict["github_repos"] = github_repos
         s_dict["codechef_contests"] = codechef_contests
-        s_dict["codechef_dates"] = codechef_dates
-        s_dict["github_daily_contribs"] = github_daily_contribs
+        s_dict["github_daily_contribs"] = []
 
         return jsonify(s_dict), 200
     finally:
