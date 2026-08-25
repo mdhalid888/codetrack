@@ -129,6 +129,7 @@ class PlatformStats(Base):
     followers = Column(Integer, default=0)
 
     # Calculated & System fields
+    submission_calendar = Column(Text, default="{}")
     normalized_score = Column(Float, default=0.0) # 0 to 100
     status = Column(String(50), default="connected") # connected, invalid_username, data_unavailable
     error_message = Column(String(255), nullable=True)
@@ -137,6 +138,14 @@ class PlatformStats(Base):
     student = relationship("Student", back_populates="platform_stats")
 
     def to_dict(self):
+        import json
+        sub_cal = {}
+        if self.submission_calendar:
+            try:
+                sub_cal = json.loads(self.submission_calendar)
+            except Exception:
+                sub_cal = {}
+
         return {
             "id": self.id,
             "student_id": self.student_id,
@@ -162,6 +171,7 @@ class PlatformStats(Base):
             "issues": self.issues,
             "stars_received": self.stars_received,
             "followers": self.followers,
+            "submission_calendar": sub_cal,
             "normalized_score": round(self.normalized_score or 0.0, 1),
             "status": self.status,
             "error_message": self.error_message or "",
