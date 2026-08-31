@@ -112,6 +112,9 @@ class PlatformStats(Base):
     contests_count = Column(Integer, default=0)
     global_rank = Column(String(50), default="")
     active_days = Column(Integer, default=0)
+    current_streak = Column(Integer, default=0)
+    max_streak = Column(Integer, default=0)
+    submission_calendar = Column(Text, default="{}")
 
     # HackerRank specific
     badges_count = Column(Integer, default=0)
@@ -151,6 +154,9 @@ class PlatformStats(Base):
             "contests_count": self.contests_count,
             "global_rank": self.global_rank,
             "active_days": self.active_days,
+            "current_streak": self.current_streak or 0,
+            "max_streak": self.max_streak or 0,
+            "submission_calendar": self.submission_calendar or "{}",
             "badges_count": self.badges_count,
             "skills": self.skills,
             "certifications_count": self.certifications_count,

@@ -485,6 +485,59 @@ def get_students():
     finally:
         db.close()
 
+def trigger_quick_update_for_student_if_stale(student):
+    """
+    Triggers an instant background update for a single student if data is older than 60s.
+    Runs asynchronously in a background thread so HTTP requests respond instantly in < 1ms.
+    """
+    if not student or not student.leetcode_username:
+        return
+
+    now = datetime.utcnow()
+    lc_p = next((p for p in student.platform_stats if p.platform == 'leetcode'), None)
+    if lc_p and lc_p.last_updated and (now - lc_p.last_updated) < timedelta(seconds=60):
+        return  # Fresh data, serve cached immediately
+
+    def async_quick_update(student_id):
+        db = SessionLocal()
+        try:
+            st = db.query(Student).filter(Student.id == student_id).first()
+            if st and st.leetcode_username:
+                lc_res = fetch_leetcode_stats(st.leetcode_username)
+                if lc_res.get("status") == "connected":
+                    lc_stat = db.query(PlatformStats).filter(
+                        PlatformStats.student_id == student_id,
+                        PlatformStats.platform == "leetcode"
+                    ).first()
+                    if not lc_stat:
+                        lc_stat = PlatformStats(student_id=student_id, platform="leetcode")
+                        db.add(lc_stat)
+
+                    lc_stat.problems_solved = lc_res.get("problems_solved", 0)
+                    lc_stat.easy_solved = lc_res.get("easy_solved", 0)
+                    lc_stat.medium_solved = lc_res.get("medium_solved", 0)
+                    lc_stat.hard_solved = lc_res.get("hard_solved", 0)
+                    lc_stat.rating = lc_res.get("rating", 0)
+                    lc_stat.global_rank = str(lc_res.get("global_rank", "N/A"))
+                    lc_stat.active_days = lc_res.get("active_days", 0)
+                    lc_stat.current_streak = lc_res.get("current_streak", 0)
+                    lc_stat.max_streak = lc_res.get("max_streak", 0)
+                    lc_stat.submission_calendar = json.dumps(lc_res.get("submission_calendar", {}))
+                    lc_stat.normalized_score = calculate_platform_normalized_score("leetcode", lc_res)
+                    lc_stat.last_updated = datetime.utcnow()
+                    db.commit()
+
+                    if mongo_db is not None:
+                        d = st.to_dict()
+                        d["_id"] = st.id
+                        mongo_db.students.replace_one({"_id": st.id}, d, upsert=True)
+        except Exception as e:
+            print(f"Async quick update notice for student {student_id}: {e}")
+        finally:
+            db.close()
+
+    threading.Thread(target=async_quick_update, args=(student.id,), daemon=True).start()
+
 RECENT_SUBMISSIONS_CACHE = {}
 
 @app.route("/api/students/<int:student_id>", methods=["GET"])
@@ -494,6 +547,8 @@ def get_student_detail(student_id):
         student = db.query(Student).filter(Student.id == student_id).first()
         if not student:
             return jsonify({"error": "Student not found"}), 404
+
+        trigger_quick_update_for_student_if_stale(student)
 
         s_dict = student.to_dict()
         stats_map = {}
