@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import type { PlatformType, LeaderboardItem, AdminUser } from '../types';
 import { getLeaderboard } from '../services/api';
 import { StudentProfileModal } from '../components/StudentProfileModal';
-import { Trophy, Filter, Search, ShieldCheck } from 'lucide-react';
+import { Trophy, Filter, Search, ShieldCheck, Flame } from 'lucide-react';
 
 interface LeaderboardProps {
   currentUser?: AdminUser | null;
@@ -210,7 +210,7 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
                   {currentPlatform === 'leetcode' && (
                     <>
                       <th className="py-3.5 px-4 text-right">SOLVED (E/M/H)</th>
-                      <th className="py-3.5 px-4 text-center">RATING</th>
+                      <th className="py-3.5 px-4 text-center">CURRENT STREAK</th>
                       <th className="py-3.5 px-4 text-center">ACTIVE DAYS</th>
                       <th className="py-3.5 px-4 text-right">GLOBAL RANK</th>
                     </>
@@ -310,8 +310,10 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
                             </span>
                           </div>
                         </td>
-                        <td className="py-4 px-4 text-center font-bold text-purple-600 dark:text-purple-300">
-                          {item.rating || '-'}
+                        <td className="py-4 px-4 text-center font-bold text-amber-500 font-mono">
+                          <span className="inline-flex items-center gap-1 font-black text-amber-500 text-sm">
+                            {item.current_streak || 0} <Flame className="w-4 h-4 fill-amber-500 text-amber-500" />
+                          </span>
                         </td>
                         <td className="py-4 px-4 text-center font-mono font-extrabold text-emerald-600 dark:text-emerald-400">
                           {item.active_days || 0} days

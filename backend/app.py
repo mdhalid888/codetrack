@@ -765,7 +765,7 @@ def get_dashboard_summary():
                 username = s.name.lower().replace(" ", "_")
 
             today_val = max(1, (s.id * 3 + 2) % 15) if solved_val > 0 else 0
-            streak_val = max(3, (s.id * 7 + 5) % 45) if solved_val > 0 else 0
+            streak_val = getattr(p, 'current_streak', 0) if p else 0
 
             total_solves += solved_val
             todays_solves += today_val
@@ -956,6 +956,7 @@ def get_leaderboard():
             lc_hard = p_lc.hard_solved if p_lc else 0
             lc_rating = p_lc.rating if p_lc else 0
             lc_active = p_lc.active_days if p_lc else 0
+            lc_current_streak = getattr(p_lc, 'current_streak', 0) if p_lc else 0
             lc_rank = str(p_lc.global_rank or "N/A") if p_lc else "N/A"
 
             cc_solved = p_cc.problems_solved if p_cc else 0
@@ -998,6 +999,7 @@ def get_leaderboard():
 
                 # LeetCode specific
                 "rating": lc_rating,
+                "current_streak": lc_current_streak,
                 "active_days": lc_active,
                 "global_rank": lc_rank,
 

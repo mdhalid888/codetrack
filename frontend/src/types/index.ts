@@ -14,6 +14,8 @@ export interface PlatformStats {
   contests_count: number;
   global_rank: string;
   active_days: number;
+  current_streak?: number;
+  max_streak?: number;
   badges_count: number;
   skills: string;
   certifications_count: number;
@@ -65,6 +67,8 @@ export interface LeaderboardItem {
   easy_solved?: number;
   medium_solved?: number;
   hard_solved?: number;
+  current_streak?: number;
+  max_streak?: number;
 
   challenges_completed?: number;
   badges?: number;
