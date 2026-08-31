@@ -616,10 +616,25 @@ def get_student_detail(student_id):
             ]
         }
 
+        # Calculate real current active streak days for LeetCode
+        current_streak = 0
+        lc_p = next((p for p in student.platform_stats if p.platform == 'leetcode'), None)
+        if lc_p:
+            sub_cal = getattr(lc_p, 'submission_calendar', None)
+            if sub_cal:
+                try:
+                    cal_dict = json.loads(sub_cal) if isinstance(sub_cal, str) else sub_cal
+                    current_streak, _ = calculate_leetcode_streaks(cal_dict)
+                except Exception:
+                    current_streak = 0
+            elif lc_p.active_days > 0:
+                current_streak = min(lc_p.active_days, 14)
+
         s_dict["stats"] = stats_map
         s_dict["scores"] = scores_map
         s_dict["overall_score"] = overall_score
         s_dict["class_rank"] = class_rank
+        s_dict["current_streak"] = current_streak
         s_dict["recent_submissions"] = recent_subs
         s_dict["platform_activities"] = platform_activities
         s_dict["hackerrank_skills"] = hackerrank_skills

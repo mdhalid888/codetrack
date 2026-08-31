@@ -92,11 +92,10 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
   const easySolved = typeof lc.easy_solved === 'number' ? lc.easy_solved : 0;
   const mediumSolved = typeof lc.medium_solved === 'number' ? lc.medium_solved : 0;
   const hardSolved = typeof lc.hard_solved === 'number' ? lc.hard_solved : 0;
-  const activeDays = typeof lc.active_days === 'number' ? lc.active_days : 0;
   
-  const streakVal = (lc && typeof lc.current_streak === 'number' && lc.current_streak > 0)
-    ? lc.current_streak
-    : (activeDays > 0 ? Math.min(activeDays, 14) : Math.max(1, (studentIdentity.id * 3 + 2) % 15));
+  const streakVal = (data && typeof data.current_streak === 'number')
+    ? data.current_streak
+    : ((lc && typeof lc.current_streak === 'number') ? lc.current_streak : 0);
 
   const globalRank = lc.global_rank ? String(lc.global_rank) : "N/A";
 

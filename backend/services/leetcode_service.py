@@ -1,10 +1,67 @@
 import requests
 import json
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 LEETCODE_GRAPHQL_URL = "https://leetcode.com/graphql"
 
 PROBLEM_DIFFICULTY_CACHE = {}
+
+def calculate_leetcode_streaks(submission_calendar_data):
+    if not submission_calendar_data:
+        return 0, 0
+
+    ist = timezone(timedelta(hours=5, minutes=30))
+    parsed_calendar = {}
+    
+    for ts_key, count in submission_calendar_data.items():
+        try:
+            ts = int(ts_key)
+            cnt = int(count)
+            dt = datetime.fromtimestamp(ts, tz=ist).date()
+            parsed_calendar[dt] = parsed_calendar.get(dt, 0) + cnt
+        except Exception:
+            pass
+
+    if not parsed_calendar:
+        return 0, 0
+
+    sorted_dates = sorted(parsed_calendar.keys())
+    max_streak = 0
+    temp_streak = 0
+    prev_date = None
+
+    for d in sorted_dates:
+        if parsed_calendar[d] <= 0:
+            max_streak = max(max_streak, temp_streak)
+            temp_streak = 0
+            prev_date = None
+            continue
+            
+        if prev_date is None:
+            temp_streak = 1
+        elif d == prev_date + timedelta(days=1):
+            temp_streak += 1
+        else:
+            max_streak = max(max_streak, temp_streak)
+            temp_streak = 1
+        prev_date = d
+
+    max_streak = max(max_streak, temp_streak)
+
+    today = datetime.now(ist).date()
+    yesterday = today - timedelta(days=1)
+
+    current_streak = 0
+    check_date = today
+
+    if parsed_calendar.get(today, 0) == 0 and parsed_calendar.get(yesterday, 0) > 0:
+        check_date = yesterday
+
+    while parsed_calendar.get(check_date, 0) > 0:
+        current_streak += 1
+        check_date -= timedelta(days=1)
+
+    return current_streak, max_streak
 
 def format_time_ago(ts):
     try:
@@ -190,6 +247,8 @@ def fetch_leetcode_stats(username: str) -> dict:
                     "time_ago": format_time_ago(ts) if ts else "recently"
                 })
 
+            current_streak, max_streak = calculate_leetcode_streaks(sub_calendar)
+
             return {
                 "status": "connected",
                 "error_message": "",
@@ -200,6 +259,8 @@ def fetch_leetcode_stats(username: str) -> dict:
                 "rating": rating,
                 "global_rank": str(ranking),
                 "active_days": active_days,
+                "current_streak": current_streak,
+                "max_streak": max_streak,
                 "contests_count": contests_count,
                 "submission_calendar": sub_calendar,
                 "recent_submissions": recent_submissions
