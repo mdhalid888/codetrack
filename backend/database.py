@@ -30,8 +30,26 @@ def get_mongo_db():
         print(f"MongoDB Atlas connection warning: {e}")
         return None
 
+def check_and_migrate_db_columns():
+    try:
+        with engine.connect() as conn:
+            from sqlalchemy import text
+            result = conn.execute(text("PRAGMA table_info(platform_stats);")).fetchall()
+            existing_cols = [row[1] for row in result]
+            if "current_streak" not in existing_cols:
+                conn.execute(text("ALTER TABLE platform_stats ADD COLUMN current_streak INTEGER DEFAULT 0;"))
+            if "max_streak" not in existing_cols:
+                conn.execute(text("ALTER TABLE platform_stats ADD COLUMN max_streak INTEGER DEFAULT 0;"))
+            if "submission_calendar" not in existing_cols:
+                conn.execute(text("ALTER TABLE platform_stats ADD COLUMN submission_calendar TEXT DEFAULT '{}';"))
+            conn.commit()
+            print("Successfully migrated platform_stats columns in database!")
+    except Exception as e:
+        print(f"Database migration notice: {e}")
+
 def init_db():
     Base.metadata.create_all(bind=engine)
+    check_and_migrate_db_columns()
     session = SessionLocal()
 
     # Check and add individual users if they don't exist
