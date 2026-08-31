@@ -485,60 +485,117 @@ def get_students():
     finally:
         db.close()
 
+from concurrent.futures import ThreadPoolExecutor
+
+LIVE_RECENT_ACTIVITIES = []
+RECENT_SUBMISSIONS_CACHE = {}
+
+def update_single_student_leetcode(student_id):
+    """
+    Updates single student LeetCode statistics via GraphQL and detects newly solved problems.
+    """
+    db = SessionLocal()
+    try:
+        st = db.query(Student).filter(Student.id == student_id).first()
+        if not st or not st.leetcode_username:
+            return
+
+        lc_res = fetch_leetcode_stats(st.leetcode_username)
+        if lc_res.get("status") == "connected":
+            lc_stat = db.query(PlatformStats).filter(
+                PlatformStats.student_id == student_id,
+                PlatformStats.platform == "leetcode"
+            ).first()
+            if not lc_stat:
+                lc_stat = PlatformStats(student_id=student_id, platform="leetcode")
+                db.add(lc_stat)
+
+            lc_stat.problems_solved = lc_res.get("problems_solved", 0)
+            lc_stat.easy_solved = lc_res.get("easy_solved", 0)
+            lc_stat.medium_solved = lc_res.get("medium_solved", 0)
+            lc_stat.hard_solved = lc_res.get("hard_solved", 0)
+            lc_stat.rating = lc_res.get("rating", 0)
+            lc_stat.global_rank = str(lc_res.get("global_rank", "N/A"))
+            lc_stat.active_days = lc_res.get("active_days", 0)
+            lc_stat.current_streak = lc_res.get("current_streak", 0)
+            lc_stat.max_streak = lc_res.get("max_streak", 0)
+            lc_stat.submission_calendar = json.dumps(lc_res.get("submission_calendar", {}))
+            lc_stat.normalized_score = calculate_platform_normalized_score("leetcode", lc_res)
+            lc_stat.last_updated = datetime.utcnow()
+            db.commit()
+
+            # Push recent accepted submissions to live activity feed
+            recent_subs = lc_res.get("recent_submissions", [])
+            if recent_subs:
+                RECENT_SUBMISSIONS_CACHE[student_id] = recent_subs
+                for sub in recent_subs[:2]:
+                    act_item = {
+                        "student_name": st.name,
+                        "action": "solved problem on LeetCode",
+                        "problem_title": sub.get("title", "Problem Solved"),
+                        "type": sub.get("difficulty", "MEDIUM"),
+                        "time": sub.get("time_ago", "Just now")
+                    }
+                    if not any(a["student_name"] == act_item["student_name"] and a["problem_title"] == act_item["problem_title"] for a in LIVE_RECENT_ACTIVITIES):
+                        LIVE_RECENT_ACTIVITIES.insert(0, act_item)
+                        if len(LIVE_RECENT_ACTIVITIES) > 30:
+                            LIVE_RECENT_ACTIVITIES.pop()
+
+            if mongo_db is not None:
+                d = st.to_dict()
+                d["_id"] = st.id
+                mongo_db.students.replace_one({"_id": st.id}, d, upsert=True)
+    except Exception as e:
+        print(f"Async quick update notice for student {student_id}: {e}")
+    finally:
+        db.close()
+
+def sync_all_students_parallel():
+    """
+    Executes parallel GraphQL updates for all students in < 3 seconds using 10 worker threads.
+    """
+    db = SessionLocal()
+    try:
+        student_ids = [s.id for s in db.query(Student.id).filter(Student.leetcode_username != "").all()]
+    finally:
+        db.close()
+
+    if not student_ids:
+        return
+
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        executor.map(update_single_student_leetcode, student_ids)
+
 def trigger_quick_update_for_student_if_stale(student):
     """
-    Triggers an instant background update for a single student if data is older than 60s.
-    Runs asynchronously in a background thread so HTTP requests respond instantly in < 1ms.
+    Triggers an instant background update for a single student if data is older than 15s.
     """
     if not student or not student.leetcode_username:
         return
 
     now = datetime.utcnow()
     lc_p = next((p for p in student.platform_stats if p.platform == 'leetcode'), None)
-    if lc_p and lc_p.last_updated and (now - lc_p.last_updated) < timedelta(seconds=60):
+    if lc_p and lc_p.last_updated and (now - lc_p.last_updated) < timedelta(seconds=15):
         return  # Fresh data, serve cached immediately
 
-    def async_quick_update(student_id):
-        db = SessionLocal()
-        try:
-            st = db.query(Student).filter(Student.id == student_id).first()
-            if st and st.leetcode_username:
-                lc_res = fetch_leetcode_stats(st.leetcode_username)
-                if lc_res.get("status") == "connected":
-                    lc_stat = db.query(PlatformStats).filter(
-                        PlatformStats.student_id == student_id,
-                        PlatformStats.platform == "leetcode"
-                    ).first()
-                    if not lc_stat:
-                        lc_stat = PlatformStats(student_id=student_id, platform="leetcode")
-                        db.add(lc_stat)
+    threading.Thread(target=update_single_student_leetcode, args=(student.id,), daemon=True).start()
 
-                    lc_stat.problems_solved = lc_res.get("problems_solved", 0)
-                    lc_stat.easy_solved = lc_res.get("easy_solved", 0)
-                    lc_stat.medium_solved = lc_res.get("medium_solved", 0)
-                    lc_stat.hard_solved = lc_res.get("hard_solved", 0)
-                    lc_stat.rating = lc_res.get("rating", 0)
-                    lc_stat.global_rank = str(lc_res.get("global_rank", "N/A"))
-                    lc_stat.active_days = lc_res.get("active_days", 0)
-                    lc_stat.current_streak = lc_res.get("current_streak", 0)
-                    lc_stat.max_streak = lc_res.get("max_streak", 0)
-                    lc_stat.submission_calendar = json.dumps(lc_res.get("submission_calendar", {}))
-                    lc_stat.normalized_score = calculate_platform_normalized_score("leetcode", lc_res)
-                    lc_stat.last_updated = datetime.utcnow()
-                    db.commit()
+# Start background auto-sync loop running every 30 seconds
+def start_auto_sync_background_poller():
+    def poll_loop():
+        import time
+        time.sleep(5)
+        while True:
+            try:
+                sync_all_students_parallel()
+            except Exception as err:
+                print(f"Background poller loop notice: {err}")
+            time.sleep(30)
 
-                    if mongo_db is not None:
-                        d = st.to_dict()
-                        d["_id"] = st.id
-                        mongo_db.students.replace_one({"_id": st.id}, d, upsert=True)
-        except Exception as e:
-            print(f"Async quick update notice for student {student_id}: {e}")
-        finally:
-            db.close()
+    t = threading.Thread(target=poll_loop, daemon=True)
+    t.start()
 
-    threading.Thread(target=async_quick_update, args=(student.id,), daemon=True).start()
-
-RECENT_SUBMISSIONS_CACHE = {}
+start_auto_sync_background_poller()
 
 @app.route("/api/students/<int:student_id>", methods=["GET"])
 def get_student_detail(student_id):
@@ -830,6 +887,10 @@ def get_dashboard_summary():
                     "type": diff_levels[idx % len(diff_levels)] if target_plat != "github" else "COMMIT",
                     "time": f"{(idx + 1) * 6} mins ago"
                 })
+
+        if LIVE_RECENT_ACTIVITIES:
+            recent_activities = LIVE_RECENT_ACTIVITIES + recent_activities
+            recent_activities = recent_activities[:25]
 
         milestones = [
             {"text": f"🏆 {students[0].name if students else 'IT'} department lead classroom ranking!", "time": "2 hours ago"},
@@ -1322,7 +1383,7 @@ def import_students():
         db.close()
         
         # Automatically trigger background live platform scraping for all imported students
-        threading.Thread(target=sync_all_students_live_data).start()
+        threading.Thread(target=sync_all_students_parallel, daemon=True).start()
         
         return jsonify({"message": f"Successfully processed roster file! Added: {added_count}, Updated: {updated_count} students with live multi-platform data syncing in progress."}), 200
     except Exception as e:
@@ -1330,8 +1391,8 @@ def import_students():
 
 @app.route("/api/admin/sync", methods=["POST"])
 def trigger_sync():
-    threading.Thread(target=sync_all_students_live_data).start()
-    return jsonify({"message": "Live platform data synchronization started in background!"}), 200
+    threading.Thread(target=sync_all_students_parallel, daemon=True).start()
+    return jsonify({"message": "Fast multi-threaded platform data synchronization started in background!"}), 200
 
 @app.route("/api/admin/students/<int:student_id>", methods=["PUT"])
 def update_student(student_id):

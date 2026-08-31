@@ -68,6 +68,14 @@ export const App: React.FC = () => {
   const [isLoginOpen, setIsLoginOpen] = useState<boolean>(false);
   const [currentUser, setCurrentUser] = useState<AdminUser | null>(null);
 
+  // Automatic 15-second live refresh ticker so solved counts, streaks, activity feed, and heatmaps update dynamically
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setRefreshKey(prev => prev + 1);
+    }, 15000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Theme State ('dark' | 'light')
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     return (localStorage.getItem('codetrack_theme') as 'dark' | 'light') || 'light';
