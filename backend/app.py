@@ -633,46 +633,34 @@ def get_student_detail(student_id):
             scores_map.get("github", 0.0)
         )
         
-        # Initialize platform specific auxiliary data structures
-        hackerrank_skills = [
-            {"skill": "Problem Solving", "stars": 5, "score": "250 pts"},
-            {"skill": "Python Language", "stars": 4, "score": "180 pts"},
-            {"skill": "SQL & Databases", "stars": 3, "score": "120 pts"},
-            {"skill": "Algorithms", "stars": 4, "score": "210 pts"}
-        ]
+        # Initialize real auxiliary platform structures
+        hackerrank_skills = []
+        if student.hackerrank_username:
+            try:
+                hr_res = fetch_hackerrank_stats(student.hackerrank_username)
+                if hr_res.get("skills"):
+                    hackerrank_skills = hr_res.get("skills")
+            except Exception:
+                pass
 
-        github_repos = [
-            {"name": "leetcode-solutions-py", "language": "Python", "stars": 4, "forks": 2, "updated": "2 days ago"},
-            {"name": "codetrack-fullstack", "language": "TypeScript", "stars": 8, "forks": 3, "updated": "3 days ago"},
-            {"name": "dsa-competitive-cpp", "language": "C++", "stars": 2, "forks": 1, "updated": "1 week ago"},
-            {"name": "database-scanner-workflow", "language": "Python", "stars": 5, "forks": 2, "updated": "2 weeks ago"}
-        ]
+        github_repos = []
+        if student.github_username:
+            try:
+                gh_res = fetch_github_stats(student.github_username)
+                if gh_res.get("top_repos"):
+                    github_repos = gh_res.get("top_repos")
+            except Exception:
+                pass
 
-        codechef_contests = [
-            {"name": "Starters 142 (Rated)", "rank": 1420, "rating_change": "+45", "new_rating": 1456, "time": "1 day ago"},
-            {"name": "Cook-Off #88", "rank": 2100, "rating_change": "+18", "new_rating": 1411, "time": "3 days ago"},
-            {"name": "Starters 139", "rank": 3400, "rating_change": "-12", "new_rating": 1393, "time": "5 days ago"},
-            {"name": "Lunchtime May", "rank": 1850, "rating_change": "+32", "new_rating": 1405, "time": "10 days ago"}
-        ]
-        # Initialize auxiliary platform structures
-        hackerrank_skills = [
-            {"skill": "Problem Solving", "stars": 5, "score": "250 pts"},
-            {"skill": "Python Language", "stars": 4, "score": "180 pts"},
-            {"skill": "SQL & Databases", "stars": 3, "score": "120 pts"},
-            {"skill": "Algorithms", "stars": 4, "score": "210 pts"}
-        ]
+        codechef_contests = []
+        if student.codechef_username:
+            try:
+                cc_res = fetch_codechef_stats(student.codechef_username)
+                if cc_res.get("contest_history"):
+                    codechef_contests = cc_res.get("contest_history")
+            except Exception:
+                pass
 
-        github_repos = [
-            {"name": "codetrack", "language": "TypeScript", "stars": 8, "forks": 3, "updated": "3 days ago"},
-            {"name": "leetcode-classroom-tracker", "language": "Python", "stars": 4, "forks": 2, "updated": "2 days ago"},
-            {"name": "dsa-competitive-cpp", "language": "C++", "stars": 2, "forks": 1, "updated": "1 week ago"}
-        ]
-
-        codechef_contests = [
-            {"name": "Starters 142 (Rated)", "rank": 1420, "rating_change": "+45", "new_rating": 1456, "time": "1 day ago"},
-            {"name": "Cook-Off #88", "rank": 2100, "rating_change": "+18", "new_rating": 1411, "time": "3 days ago"},
-            {"name": "Starters 139", "rank": 3400, "rating_change": "-12", "new_rating": 1393, "time": "5 days ago"}
-        ]
         github_daily_contribs = []
 
         # Compute exact class rank for this student within their department
@@ -692,40 +680,11 @@ def get_student_detail(student_id):
 
         recent_subs = RECENT_SUBMISSIONS_CACHE.get(student_id, [])
 
-        # Build 20 platform activities for each platform
         platform_activities = {
-            "leetcode": recent_subs if recent_subs else [
-                {"title": "Contains Duplicate II", "difficulty": "MEDIUM", "time_ago": "15 hours ago"},
-                {"title": "Construct the Minimum Bitwise Array I", "difficulty": "MEDIUM", "time_ago": "1 day ago"},
-                {"title": "Remove Duplicates from Sorted Array II", "difficulty": "MEDIUM", "time_ago": "2 days ago"},
-                {"title": "Gas Station", "difficulty": "MEDIUM", "time_ago": "2 days ago"},
-                {"title": "Wildcard Matching", "difficulty": "HARD", "time_ago": "2 days ago"},
-                {"title": "Find All Duplicates in an Array", "difficulty": "MEDIUM", "time_ago": "2 days ago"},
-                {"title": "Single Number III", "difficulty": "MEDIUM", "time_ago": "2 days ago"},
-                {"title": "Search a 2D Matrix II", "difficulty": "MEDIUM", "time_ago": "2 days ago"},
-                {"title": "Serialize and Deserialize Binary Tree", "difficulty": "HARD", "time_ago": "2 days ago"},
-                {"title": "4Sum", "difficulty": "MEDIUM", "time_ago": "2 days ago"}
-            ],
-            "codechef": [
-                {"title": "Starters 142 - Problem A", "difficulty": "MEDIUM", "time_ago": "1 day ago"},
-                {"title": "Starters 141 - Array Equalizer", "difficulty": "EASY", "time_ago": "2 days ago"},
-                {"title": "Cook-Off #88 - Chef and Substrings", "difficulty": "MEDIUM", "time_ago": "3 days ago"},
-                {"title": "Lunchtime - Maximum Sum Subarray", "difficulty": "MEDIUM", "time_ago": "4 days ago"}
-            ],
-            "hackerrank": [
-                {"title": "Solve Me First", "difficulty": "EASY", "time_ago": "5 hours ago"},
-                {"title": "Simple Array Sum", "difficulty": "EASY", "time_ago": "18 hours ago"},
-                {"title": "Compare the Triplets", "difficulty": "EASY", "time_ago": "1 day ago"},
-                {"title": "A Very Big Sum", "difficulty": "EASY", "time_ago": "2 days ago"}
-            ],
-            "github": [
-                {"title": "pushed 5 commits to main branch in codetrack-v2", "difficulty": "MEDIUM", "time_ago": "2 hours ago"},
-                {"title": "created repository algorithm-solutions-python", "difficulty": "EASY", "time_ago": "1 day ago"},
-                {"title": "merged pull request #12 - Fix database migration", "difficulty": "HARD", "time_ago": "3 days ago"},
-                {"title": "closed issue #8 - Optimize API endpoint response time", "difficulty": "MEDIUM", "time_ago": "4 days ago"},
-                {"title": "starred repository facebook/react", "difficulty": "EASY", "time_ago": "5 days ago"},
-                {"title": "pushed 8 commits to main branch", "difficulty": "MEDIUM", "time_ago": "6 days ago"}
-            ]
+            "leetcode": recent_subs,
+            "codechef": [],
+            "hackerrank": [],
+            "github": []
         }
 
         # Calculate real current active streak days for LeetCode

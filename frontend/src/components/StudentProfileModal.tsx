@@ -154,16 +154,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
   // Activities & Repositories lists
   const realAcSubs = (data && data.recent_submissions && data.recent_submissions.length > 0)
     ? data.recent_submissions
-    : (totalSolved > 0 ? [
-        { title: "Contains Duplicate II", difficulty: "EASY", time_ago: "16 hours ago" },
-        { title: "Construct the Minimum Bitwise Array I", difficulty: "EASY", time_ago: "1 day ago" },
-        { title: "Minimum Size Subarray Sum", difficulty: "MEDIUM", time_ago: "2 days ago" },
-        { title: "Find the Original Typed String I", difficulty: "EASY", time_ago: "3 days ago" },
-        { title: "Maximum Length Substring With Two Occurrences", difficulty: "EASY", time_ago: "3 days ago" },
-        { title: "Power of Three", difficulty: "EASY", time_ago: "4 days ago" },
-        { title: "Power of Two", difficulty: "EASY", time_ago: "4 days ago" },
-        { title: "Ugly Number II", difficulty: "MEDIUM", time_ago: "5 days ago" }
-      ] : []);
+    : [];
 
   const platformActivitiesMap = (data && data.platform_activities) ? data.platform_activities : {};
   let currentActivitiesList: any[] = [];
