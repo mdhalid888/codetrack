@@ -295,3 +295,49 @@ def fetch_leetcode_stats(username: str) -> dict:
             "submission_calendar": {},
             "recent_submissions": []
         }
+
+def fetch_leetcode_daily_challenge() -> dict:
+    """
+    Fetches the active daily coding challenge question from LeetCode GraphQL API.
+    """
+    query = """
+    query questionOfToday {
+      activeDailyCodingChallengeQuestion {
+        date
+        userStatus
+        link
+        question {
+          questionId
+          questionFrontendId
+          title
+          titleSlug
+          difficulty
+        }
+      }
+    }
+    """
+    try:
+        res = requests.post(
+            LEETCODE_GRAPHQL_URL,
+            json={"query": query},
+            headers={"Content-Type": "application/json"},
+            timeout=5
+        )
+        if res.status_code == 200:
+            data = res.json().get("data", {}).get("activeDailyCodingChallengeQuestion", {})
+            q = data.get("question", {})
+            return {
+                "title": f"#{q.get('questionFrontendId', '')} {q.get('title', 'Daily Challenge')}",
+                "title_slug": q.get("titleSlug", ""),
+                "difficulty": q.get("difficulty", "Medium"),
+                "link": f"https://leetcode.com{data.get('link', '')}" if data.get("link") else "https://leetcode.com/problemset/all/"
+            }
+    except Exception as e:
+        print(f"Daily challenge fetch notice: {e}")
+
+    return {
+        "title": "Daily Challenge",
+        "title_slug": "",
+        "difficulty": "Medium",
+        "link": "https://leetcode.com/problemset/all/"
+    }

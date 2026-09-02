@@ -816,11 +816,21 @@ def get_dashboard_summary():
             for t in IN_MEMORY_TASKS
         ]
 
-        daily_challenge = {
-            "title": "Stone Game II" if platform == "leetcode" else f"{platform.upper()} Daily Challenge",
-            "difficulty": "Medium",
-            "completion": f"18 / {max(1, len(students))}"
-        }
+        try:
+            lc_dc = fetch_leetcode_daily_challenge()
+            daily_challenge = {
+                "title": lc_dc.get("title", "Daily Challenge"),
+                "difficulty": lc_dc.get("difficulty", "Medium"),
+                "link": lc_dc.get("link", "https://leetcode.com/problemset/all/"),
+                "completion": f"{todays_solves} / {max(1, len(students))}"
+            }
+        except Exception:
+            daily_challenge = {
+                "title": "LeetCode Daily Challenge",
+                "difficulty": "Medium",
+                "link": "https://leetcode.com/problemset/all/",
+                "completion": f"{todays_solves} / {max(1, len(students))}"
+            }
 
         # Build dynamic recent activities for the last 20 student progress updates based on selected platform
         recent_activities = []
@@ -1002,7 +1012,7 @@ def get_leaderboard():
             )
 
             leaderboard.append({
-                "sort_tuple": (-rank_score, s.name),
+                "sort_tuple": (-rank_score, s.register_number, s.name),
                 "id": s.id,
                 "name": s.name,
                 "register_number": s.register_number,
