@@ -126,30 +126,69 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
   if (activePlatform === 'github') currentTotal = ghContribs;
   if (activePlatform === 'allrounder') currentTotal = totalSolved + ccSolved + hrScore + ghContribs;
 
-  // Past 30 Days Dates matching Photo 1
-  const dateLabels = [
-    "Jul 19", "Jul 20", "Jul 21", "Jul 22", "Jul 23", "Jul 24", "Jul 25", "Jul 26", "Jul 27", "Jul 28",
-    "Jul 29", "Jul 30", "Jul 31", "Aug 01", "Aug 02", "Aug 03", "Aug 04", "Aug 05", "Aug 06", "Aug 07",
-    "Aug 08", "Aug 09", "Aug 10", "Aug 11", "Aug 12", "Aug 13", "Aug 14", "Aug 15", "Aug 16", "Aug 17"
-  ];
+  // Generate REAL 30-Day Progress Trajectory for each student based on authentic submission history
+  const monthNamesShort = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-  const yMin = Math.max(0, Math.floor(currentTotal * 0.65));
-  const yMax = Math.max(10, Math.ceil(currentTotal * 1.02));
+  const generateRealProgressData = () => {
+    const dailySolvesMap: Record<string, number> = {};
 
-  const progressData = dateLabels.map((label, idx) => {
-    let val = yMin;
-    if (idx < 3) val = yMin;
-    else if (idx < 6) val = yMin + (currentTotal - yMin) * 0.25;
-    else if (idx < 10) val = yMin + (currentTotal - yMin) * 0.60;
-    else if (idx < 17) val = yMin + (currentTotal - yMin) * 0.78;
-    else if (idx < 26) val = yMin + (currentTotal - yMin) * 0.88;
-    else val = currentTotal;
+    let calendarObj = submissionCalendar;
+    if (typeof calendarObj === 'string') {
+      try { calendarObj = JSON.parse(calendarObj); } catch { calendarObj = {}; }
+    }
 
-    return {
-      date: label,
-      solves: Math.round(val)
-    };
-  });
+    if (calendarObj && typeof calendarObj === 'object') {
+      Object.entries(calendarObj).forEach(([tsStr, count]) => {
+        const ts = Number(tsStr);
+        if (!isNaN(ts) && ts > 0) {
+          const dt = new Date(ts * 1000);
+          const yyyy = dt.getFullYear();
+          const mm = String(dt.getMonth() + 1).padStart(2, '0');
+          const dd = String(dt.getDate()).padStart(2, '0');
+          const key = `${yyyy}-${mm}-${dd}`;
+          dailySolvesMap[key] = (dailySolvesMap[key] || 0) + Number(count);
+        }
+      });
+    }
+
+    // Build array of the past 30 days up to today
+    const now = new Date();
+    const daysList: { dateKey: string; label: string }[] = [];
+
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(now.getTime() - i * 86400 * 1000);
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      const dateKey = `${yyyy}-${mm}-${dd}`;
+      const label = `${monthNamesShort[d.getMonth()]} ${dd}`;
+      daysList.push({ dateKey, label });
+    }
+
+    // Calculate total solves in the 30-day window
+    let totalIn30Days = 0;
+    daysList.forEach(day => {
+      totalIn30Days += (dailySolvesMap[day.dateKey] || 0);
+    });
+
+    // Running cumulative solve total
+    let runningTotal = Math.max(0, currentTotal - totalIn30Days);
+
+    return daysList.map(day => {
+      const daySolves = dailySolvesMap[day.dateKey] || 0;
+      runningTotal += daySolves;
+      return {
+        date: day.label,
+        solves: Math.min(runningTotal, currentTotal > 0 ? Math.max(currentTotal, runningTotal) : runningTotal)
+      };
+    });
+  };
+
+  const progressData = generateRealProgressData();
+  const minProgressSolves = Math.min(...progressData.map(d => d.solves));
+  const maxProgressSolves = Math.max(...progressData.map(d => d.solves));
+  const chartYMin = Math.max(0, minProgressSolves - Math.ceil((maxProgressSolves - minProgressSolves) * 0.1 || 2));
+  const chartYMax = maxProgressSolves + Math.ceil((maxProgressSolves - minProgressSolves) * 0.1 || 2);
 
   // Activities & Repositories lists
   const realAcSubs = (data && data.recent_submissions && data.recent_submissions.length > 0)
@@ -652,7 +691,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
                     <YAxis
                       stroke="#8a7f9e"
                       tick={{ fontSize: 10, fill: '#8a7f9e' }}
-                      domain={[yMin, yMax]}
+                      domain={[chartYMin, chartYMax]}
                     />
                     <Tooltip contentStyle={{ backgroundColor: '#171430', borderRadius: '12px', borderColor: '#2f2754', color: '#fff' }} />
                     <Area
