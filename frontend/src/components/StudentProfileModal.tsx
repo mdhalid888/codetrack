@@ -119,6 +119,8 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
   if (activePlatform === 'hackerrank' && !studentIdentity.hackerrank_username) isConnected = false;
   if (activePlatform === 'github' && !studentIdentity.github_username) isConnected = false;
 
+  const submissionCalendar = (lc && lc.submission_calendar) ? lc.submission_calendar : {};
+
   // Target solve number for progress chart
   let currentTotal = totalSolved;
   if (activePlatform === 'codechef') currentTotal = ccSolved;
@@ -216,7 +218,6 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
 
   // Heatmap Calendar Grid with Month Breakdown
   const codechefDates = (data && data.codechef_dates) ? data.codechef_dates : {};
-  const submissionCalendar = (lc && lc.submission_calendar) ? lc.submission_calendar : {};
   const calendarTimestamps = Object.keys(submissionCalendar).map(Number).sort((a, b) => a - b);
   const todaySeconds = Math.floor(Date.now() / 1000);
   const oneYearAgoSeconds = todaySeconds - (52 * 7 * 86400);
