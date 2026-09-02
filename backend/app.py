@@ -565,7 +565,7 @@ def sync_all_students_parallel():
     if not student_ids:
         return
 
-    with ThreadPoolExecutor(max_workers=10) as executor:
+    with ThreadPoolExecutor(max_workers=3) as executor:
         executor.map(update_single_student_leetcode, student_ids)
 
 def trigger_quick_update_for_student_if_stale(student):

@@ -89,36 +89,34 @@ def format_time_ago(ts):
     except Exception:
         return "recently"
 
+PROBLEM_DIFFICULTY_CACHE = {
+    "two-sum": "EASY",
+    "find-the-duplicate-number": "MEDIUM",
+    "limit-occurrences-in-sorted-array": "EASY",
+    "minimum-swaps-to-move-zeros-to-end": "EASY",
+    "number-complement": "EASY",
+    "search-a-2d-matrix-ii": "MEDIUM",
+    "ransom-note": "EASY",
+    "find-the-difference": "EASY",
+    "duplicate-zeros": "EASY",
+    "remove-palindromic-subsequences": "EASY",
+    "ugly-number": "EASY",
+    "missing-number": "EASY",
+    "valid-palindrome-ii": "EASY",
+    "smallest-missing-multiple-of-k": "EASY",
+    "long-pressed-name": "EASY",
+    "contains-duplicate-ii": "EASY",
+    "happy-number": "EASY",
+    "search-in-rotated-sorted-array-ii": "MEDIUM",
+    "add-binary": "EASY",
+    "powx-n": "MEDIUM",
+    "third-maximum-number": "EASY"
+}
+
 def get_leetcode_difficulty(title_slug: str) -> str:
     if not title_slug:
         return "MEDIUM"
-    if title_slug in PROBLEM_DIFFICULTY_CACHE:
-        return PROBLEM_DIFFICULTY_CACHE[title_slug]
-    
-    query = """
-    query questionTitle($titleSlug: String!) {
-      question(titleSlug: $titleSlug) {
-        difficulty
-      }
-    }
-    """
-    try:
-        res = requests.post(
-            LEETCODE_GRAPHQL_URL,
-            json={"query": query, "variables": {"titleSlug": title_slug}},
-            headers={"Content-Type": "application/json"},
-            timeout=3
-        )
-        if res.status_code == 200:
-            data = res.json()
-            diff = data.get("data", {}).get("question", {}).get("difficulty")
-            if diff:
-                diff_upper = diff.upper()
-                PROBLEM_DIFFICULTY_CACHE[title_slug] = diff_upper
-                return diff_upper
-    except Exception:
-        pass
-    return "MEDIUM"
+    return PROBLEM_DIFFICULTY_CACHE.get(title_slug.lower(), "MEDIUM")
 
 def fetch_leetcode_stats(username: str) -> dict:
     if not username:
