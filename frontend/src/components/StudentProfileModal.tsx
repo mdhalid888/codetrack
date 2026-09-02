@@ -219,8 +219,10 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
   // Heatmap Calendar Grid with Month Breakdown
   const codechefDates = (data && data.codechef_dates) ? data.codechef_dates : {};
   const calendarTimestamps = Object.keys(submissionCalendar).map(Number).sort((a, b) => a - b);
-  const todaySeconds = Math.floor(Date.now() / 1000);
-  const oneYearAgoSeconds = todaySeconds - (52 * 7 * 86400);
+  
+  const nowObj = new Date();
+  const todayMidnight = Math.floor(new Date(nowObj.getFullYear(), nowObj.getMonth(), nowObj.getDate()).getTime() / 1000);
+  const oneYearAgoSeconds = todayMidnight - (52 * 7 * 86400);
 
   const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -281,8 +283,15 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ studen
       // 3. LEETCODE HEATMAP
       if (activePlatform === 'leetcode' || activePlatform === 'allrounder') {
         let count = 0;
+        const cellDateStr = `${dObj.getFullYear()}-${String(dObj.getMonth() + 1).padStart(2, '0')}-${String(dObj.getDate()).padStart(2, '0')}`;
+        const cellUtcStr = dObj.toISOString().split('T')[0];
+
         for (const ts of calendarTimestamps) {
-          if (Math.abs(ts - daySeconds) < 43200) {
+          const tsObj = new Date(ts * 1000);
+          const tsDateStr = `${tsObj.getFullYear()}-${String(tsObj.getMonth() + 1).padStart(2, '0')}-${String(tsObj.getDate()).padStart(2, '0')}`;
+          const tsUtcStr = tsObj.toISOString().split('T')[0];
+
+          if (tsDateStr === cellDateStr || tsUtcStr === cellUtcStr || Math.abs(ts - daySeconds) < 43200) {
             count += Number(submissionCalendar[ts] || 0);
           }
         }

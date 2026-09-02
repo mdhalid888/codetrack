@@ -115,6 +115,7 @@ class PlatformStats(Base):
     current_streak = Column(Integer, default=0)
     max_streak = Column(Integer, default=0)
     submission_calendar = Column(Text, default="{}")
+    recent_submissions = Column(Text, default="[]")
 
     # HackerRank specific
     badges_count = Column(Integer, default=0)
@@ -157,6 +158,7 @@ class PlatformStats(Base):
             "current_streak": getattr(self, "current_streak", 0) or 0,
             "max_streak": getattr(self, "max_streak", 0) or 0,
             "submission_calendar": getattr(self, "submission_calendar", "{}") or "{}",
+            "recent_submissions": getattr(self, "recent_submissions", "[]") or "[]",
             "badges_count": self.badges_count,
             "skills": self.skills,
             "certifications_count": self.certifications_count,

@@ -17,8 +17,10 @@ def calculate_leetcode_streaks(submission_calendar_data):
         try:
             ts = int(ts_key)
             cnt = int(count)
-            dt = datetime.fromtimestamp(ts, tz=ist).date()
-            parsed_calendar[dt] = parsed_calendar.get(dt, 0) + cnt
+            dt_ist = datetime.fromtimestamp(ts, tz=ist).date()
+            dt_utc = datetime.fromtimestamp(ts, tz=timezone.utc).date()
+            parsed_calendar[dt_ist] = parsed_calendar.get(dt_ist, 0) + cnt
+            parsed_calendar[dt_utc] = parsed_calendar.get(dt_utc, 0) + cnt
         except Exception:
             pass
 
@@ -51,27 +53,29 @@ def calculate_leetcode_streaks(submission_calendar_data):
     today = datetime.now(ist).date()
     yesterday = today - timedelta(days=1)
 
+    # Check if student solved problems today or yesterday (active grace period)
+    start_date = None
+    if parsed_calendar.get(today, 0) > 0:
+        start_date = today
+    elif parsed_calendar.get(yesterday, 0) > 0:
+        start_date = yesterday
+
     current_streak = 0
-    check_date = today
-
-    if parsed_calendar.get(today, 0) == 0 and parsed_calendar.get(yesterday, 0) > 0:
-        check_date = yesterday
-
-    while parsed_calendar.get(check_date, 0) > 0:
-        current_streak += 1
-        check_date -= timedelta(days=1)
+    if start_date is not None:
+        check_date = start_date
+        while parsed_calendar.get(check_date, 0) > 0:
+            current_streak += 1
+            check_date -= timedelta(days=1)
 
     return current_streak, max_streak
 
 def format_time_ago(ts):
     try:
-        sub_time = datetime.fromtimestamp(int(ts))
-        now = datetime.now()
+        sub_time = datetime.fromtimestamp(int(ts), tz=timezone.utc)
+        now = datetime.now(timezone.utc)
         diff = now - sub_time
         seconds = diff.total_seconds()
-        if seconds < 0:
-            return "recently"
-        if seconds < 60:
+        if seconds < 0 or seconds < 60:
             return "just now"
         elif seconds < 3600:
             mins = int(seconds / 60)

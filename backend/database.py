@@ -42,6 +42,8 @@ def check_and_migrate_db_columns():
                 conn.execute(text("ALTER TABLE platform_stats ADD COLUMN max_streak INTEGER DEFAULT 0;"))
             if "submission_calendar" not in existing_cols:
                 conn.execute(text("ALTER TABLE platform_stats ADD COLUMN submission_calendar TEXT DEFAULT '{}';"))
+            if "recent_submissions" not in existing_cols:
+                conn.execute(text("ALTER TABLE platform_stats ADD COLUMN recent_submissions TEXT DEFAULT '[]';"))
             conn.commit()
             print("Successfully migrated platform_stats columns in database!")
     except Exception as e:

@@ -520,12 +520,14 @@ def update_single_student_leetcode(student_id):
             lc_stat.current_streak = lc_res.get("current_streak", 0)
             lc_stat.max_streak = lc_res.get("max_streak", 0)
             lc_stat.submission_calendar = json.dumps(lc_res.get("submission_calendar", {}))
+            
+            recent_subs = lc_res.get("recent_submissions", [])
+            lc_stat.recent_submissions = json.dumps(recent_subs)
             lc_stat.normalized_score = calculate_platform_normalized_score("leetcode", lc_res)
             lc_stat.last_updated = datetime.utcnow()
             db.commit()
 
             # Push recent accepted submissions to live activity feed
-            recent_subs = lc_res.get("recent_submissions", [])
             if recent_subs:
                 RECENT_SUBMISSIONS_CACHE[student_id] = recent_subs
                 for sub in recent_subs[:2]:
@@ -546,7 +548,7 @@ def update_single_student_leetcode(student_id):
                 d["_id"] = st.id
                 mongo_db.students.replace_one({"_id": st.id}, d, upsert=True)
     except Exception as e:
-        print(f"Async quick update notice for student {student_id}: {e}")
+        print(f"Quick update notice for student {student_id}: {e}")
     finally:
         db.close()
 
@@ -568,7 +570,7 @@ def sync_all_students_parallel():
 
 def trigger_quick_update_for_student_if_stale(student):
     """
-    Triggers an instant background update for a single student if data is older than 15s.
+    Synchronously updates a single student if data is older than 15s or missing.
     """
     if not student or not student.leetcode_username:
         return
@@ -576,9 +578,10 @@ def trigger_quick_update_for_student_if_stale(student):
     now = datetime.utcnow()
     lc_p = next((p for p in student.platform_stats if p.platform == 'leetcode'), None)
     if lc_p and lc_p.last_updated and (now - lc_p.last_updated) < timedelta(seconds=15):
-        return  # Fresh data, serve cached immediately
+        return  # Fresh data
 
-    threading.Thread(target=update_single_student_leetcode, args=(student.id,), daemon=True).start()
+    # Perform synchronous quick update so immediate detail response contains live stats
+    update_single_student_leetcode(student.id)
 
 # Start background auto-sync loop running every 30 seconds
 def start_auto_sync_background_poller():
@@ -606,6 +609,8 @@ def get_student_detail(student_id):
             return jsonify({"error": "Student not found"}), 404
 
         trigger_quick_update_for_student_if_stale(student)
+        # Refresh student object from db after quick update
+        db.refresh(student)
 
         s_dict = student.to_dict()
         stats_map = {}
@@ -613,6 +618,12 @@ def get_student_detail(student_id):
 
         for p in student.platform_stats:
             p_dict = p.to_dict()
+            if p.platform == "leetcode":
+                raw_rec = getattr(p, "recent_submissions", "[]") or "[]"
+                try:
+                    p_dict["recent_submissions"] = json.loads(raw_rec) if isinstance(raw_rec, str) else raw_rec
+                except Exception:
+                    p_dict["recent_submissions"] = []
             stats_map[p.platform] = p_dict
             scores_map[p.platform] = p_dict.get("normalized_score", 0.0)
 
@@ -654,7 +665,17 @@ def get_student_detail(student_id):
                 class_rank = idx + 1
                 break
 
-        recent_subs = RECENT_SUBMISSIONS_CACHE.get(student_id, [])
+        # Extract recent submissions from DB or memory cache
+        lc_p = next((p for p in student.platform_stats if p.platform == 'leetcode'), None)
+        recent_subs = []
+        if lc_p and getattr(lc_p, 'recent_submissions', None):
+            try:
+                raw_rec = lc_p.recent_submissions
+                recent_subs = json.loads(raw_rec) if isinstance(raw_rec, str) else raw_rec
+            except Exception:
+                recent_subs = []
+        if not recent_subs:
+            recent_subs = RECENT_SUBMISSIONS_CACHE.get(student_id, [])
 
         platform_activities = {
             "leetcode": recent_subs,
