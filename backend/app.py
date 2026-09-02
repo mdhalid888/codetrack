@@ -633,34 +633,10 @@ def get_student_detail(student_id):
             scores_map.get("github", 0.0)
         )
         
-        # Initialize real auxiliary platform structures
+        # Initialize real auxiliary platform structures (non-blocking)
         hackerrank_skills = []
-        if student.hackerrank_username:
-            try:
-                hr_res = fetch_hackerrank_stats(student.hackerrank_username)
-                if hr_res.get("skills"):
-                    hackerrank_skills = hr_res.get("skills")
-            except Exception:
-                pass
-
         github_repos = []
-        if student.github_username:
-            try:
-                gh_res = fetch_github_stats(student.github_username)
-                if gh_res.get("top_repos"):
-                    github_repos = gh_res.get("top_repos")
-            except Exception:
-                pass
-
         codechef_contests = []
-        if student.codechef_username:
-            try:
-                cc_res = fetch_codechef_stats(student.codechef_username)
-                if cc_res.get("contest_history"):
-                    codechef_contests = cc_res.get("contest_history")
-            except Exception:
-                pass
-
         github_daily_contribs = []
 
         # Compute exact class rank for this student within their department
